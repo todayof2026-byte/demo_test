@@ -1,0 +1,43 @@
+---
+description: Page Object Model and Playwright conventions for src/pages and src/components.
+globs:
+  - "src/pages/**"
+  - "src/components/**"
+alwaysApply: false
+---
+
+# Page Object Model rules
+
+## Class shape
+- Every page MUST extend `BasePage` (`src/pages/base_page.py`).
+- The class constructor takes a single `Page` argument plus optional dependencies.
+- Selectors are defined as **class-level constants** (UPPER_SNAKE) at the top of the class.
+- Each public method describes a single user action: `search(query)`, `add_to_cart()`, `get_subtotal()`. Avoid generic `click_button(name)`.
+
+## What pages may NOT do
+- **No assertions.** Pages return data; tests assert.
+- **No Allure decorators.** Pages emit screenshots; tests own the steps.
+- **No `time.sleep`.** Use Playwright auto-wait, `wait_for_load_state`, or `wait_for(state=...)`.
+- **No reaching across pages.** A page must not import another page (only components/utils). Cross-page orchestration lives in `src/flows/`.
+
+## Components
+- Components live in `src/components/` and wrap reusable widgets (header, filter, paginator, card).
+- A component is constructed with the same `Page` reference the parent page holds.
+- Components follow the same "no assertions, no sleeps" rules as pages.
+
+## Selector strategy (in order of preference)
+1. `page.get_by_role("button", name="Add to cart")`
+2. `page.get_by_test_id("add-to-cart")`
+3. `page.get_by_text("Add to cart", exact=True)`
+4. CSS attribute selectors (`button[name='add']`)
+5. XPath - only when previous strategies fail or when the brief mandates XPath (case in point: `SearchResultsPage.PRODUCT_CARD_XPATH`).
+
+When a selector is fragile, store **multiple candidates as a tuple** and iterate in `_first_visible(...)` style - already done in `LoginPage`, `PriceFilter`, `Paginator`. This is the pattern to follow.
+
+## Adding a new page
+1. Create `src/pages/<name>_page.py`. Extend `BasePage`.
+2. Define `URL_PATH` if applicable.
+3. Add selector constants at the top of the class.
+4. Expose user-action methods (`open()`, `click_x`, `read_y`).
+5. Re-export from `src/pages/__init__.py`.
+6. If the page introduces a reusable widget, extract it into `src/components/`.

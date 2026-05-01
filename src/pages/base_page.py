@@ -1,0 +1,127 @@
+"""BasePage: shared behaviour for every page object.
+
+Design rules enforced here:
+
+* Every page object owns a ``self.page`` (Playwright ``Page``).
+* Public methods describe **user actions** ("search for X", "add to cart"),
+  not low-level locator clicks.
+* No assertions live in pages or components - assertions belong to tests/flows.
+* Locators are encapsulated; tests must never reach into ``page.locator(...)``.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from playwright.sync_api import TimeoutError as PlaywrightTimeout
+
+from src.config import get_settings
+from src.utils.logger import get_logger
+from src.utils.screenshot import attach_screenshot
+
+if TYPE_CHECKING:
+    from playwright.sync_api import Locator, Page
+
+
+class BasePage:
+    """Foundation for every Page Object."""
+
+    URL_PATH: str = "/"
+
+    # CSS candidates for the "accept cookies" banner. Common patterns across
+    # storefronts: OneTrust, generic "Accept all", text-based fallbacks.
+    _COOKIE_ACCEPT_SELECTORS: tuple[str, ...] = (
+        "#onetrust-accept-btn-handler",
+        "button[aria-label='Accept all']",
+        "button:has-text('Accept all')",
+        "button:has-text('Accept All Cookies')",
+        "button:has-text('I Accept')",
+        "button:has-text('Got it')",
+    )
+
+    # Region/locale or generic interstitial modals. Most specific first.
+    # automationexercise.com generally has no such modal, so this is a defensive
+    # no-op there; left in place because it costs nothing and helps when we
+    # retarget the framework at sites that DO show one.
+    _REGION_DISMISS_SELECTORS: tuple[str, ...] = (
+        "button:has-text('Stay on this site')",
+        "button:has-text('Continue')",
+        "button:has-text('Stay')",
+        "[aria-label='Close']",
+    )
+
+    def __init__(self, page: "Page") -> None:
+        self.page = page
+        self.settings = get_settings()
+        self.log = get_logger(self.__class__.__name__)
+
+    # ------------------------------------------------------------------ navigation
+    def open(self, path: str | None = None) -> "BasePage":
+        """Navigate to ``BASE_URL + (path or URL_PATH)`` and dismiss banners."""
+        target = path if path is not None else self.URL_PATH
+        url = target if target.startswith("http") else f"{self.settings.base_url}{target}"
+        self.log.info(f"Navigating to {url}")
+        self.page.goto(url, wait_until="domcontentloaded")
+        self.dismiss_overlays()
+        return self
+
+    def reload(self) -> "BasePage":
+        self.page.reload(wait_until="domcontentloaded")
+        self.dismiss_overlays()
+        return self
+
+    @property
+    def current_url(self) -> str:
+        return self.page.url
+
+    # ---------------------------------------------------------------- overlays
+    def dismiss_overlays(self) -> None:
+        """Best-effort dismissal of cookie consent and region modals.
+
+        Never raises - if no overlay is present, this is a no-op.
+        Region modals on some sites mount asynchronously a few hundred ms
+        after page load, so we give them a longer visibility wait than cookies.
+        """
+        self._click_first_visible(
+            self._COOKIE_ACCEPT_SELECTORS, label="cookie consent", timeout_ms=2500
+        )
+        self._click_first_visible(
+            self._REGION_DISMISS_SELECTORS, label="region modal", timeout_ms=4000
+        )
+
+    def _click_first_visible(
+        self, selectors: tuple[str, ...], *, label: str, timeout_ms: int = 1500
+    ) -> bool:
+        for selector in selectors:
+            try:
+                locator = self.page.locator(selector).first
+                if locator.is_visible(timeout=timeout_ms):
+                    locator.click(timeout=2000)
+                    self.log.info(f"Dismissed {label} via {selector}")
+                    return True
+            except PlaywrightTimeout:
+                continue
+            except Exception as exc:  # noqa: BLE001
+                self.log.debug(f"Ignoring {label} attempt with {selector}: {exc}")
+        return False
+
+    # ---------------------------------------------------------------- waits
+    def wait_for_network_idle(self, timeout_ms: int | None = None) -> None:
+        """Wait until network is idle, but don't fail the test if SSE keeps it busy."""
+        try:
+            self.page.wait_for_load_state(
+                "networkidle",
+                timeout=timeout_ms or self.settings.navigation_timeout_ms,
+            )
+        except PlaywrightTimeout:
+            self.log.debug("network idle wait timed out (continuing)")
+
+    def wait_for_visible(self, selector: str, *, timeout_ms: int | None = None) -> "Locator":
+        locator = self.page.locator(selector).first
+        locator.wait_for(state="visible", timeout=timeout_ms or self.settings.action_timeout_ms)
+        return locator
+
+    # ---------------------------------------------------------------- artefacts
+    def screenshot(self, name: str) -> None:
+        """Take a named screenshot and attach to Allure."""
+        attach_screenshot(self.page, name)

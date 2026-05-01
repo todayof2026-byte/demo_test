@@ -1,0 +1,42 @@
+# Gitleaks ruleset for this repository.
+#
+# Extends the default ruleset and adds project-specific allow-list entries so
+# the encrypted SOPS file and example templates don't trigger false positives.
+#
+# Test locally with:
+#   gitleaks detect --source . --config .gitleaks.toml --no-git --verbose
+
+[extend]
+useDefault = true
+
+# ---------------------------------------------------------------------------
+# Allow-list: paths and patterns that gitleaks should ignore.
+# ---------------------------------------------------------------------------
+[allowlist]
+description = "Project-specific allow-list (encrypted secrets, templates, fixtures)."
+
+paths = [
+  # SOPS-encrypted files - the whole point is that the values look random;
+  # gitleaks would otherwise flag the ciphertext as "high entropy".
+  '''secrets/.*\.sops\.ya?ml$''',
+
+  # Public example templates - explicitly safe placeholders.
+  '''^\.env\.example$''',
+  '''^secrets/credentials\.sops\.yaml\.example$''',
+
+  # Lockfiles can contain hashes that look secret-ish.
+  '''^poetry\.lock$''',
+  '''^uv\.lock$''',
+
+  # Allure/JUnit reports under reports/ and screenshots under screenshots/
+  # are gitignored anyway, but allow-list them in case they sneak in.
+  '''^reports/''',
+  '''^screenshots/''',
+]
+
+regexes = [
+  # Placeholder values that obviously aren't real secrets.
+  '''replace-me''',
+  '''your-test-account@example\.com''',
+  '''age1placeholder''',
+]

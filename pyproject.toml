@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ecommerce-e2e"
+version = "0.1.0"
+description = "End-to-end Playwright + pytest automation for automationexercise.com (Page Object Model, OOP, Data-Driven)."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "QA Automation Exercise" }]
+license = { text = "MIT" }
+
+dependencies = [
+    "playwright>=1.47.0",
+    "pytest>=8.0.0",
+    "pytest-playwright>=0.5.0",
+    "pytest-rerunfailures>=14.0",
+    "pytest-xdist>=3.5.0",
+    "allure-pytest>=2.13.5",
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.3.0",
+    "PyYAML>=6.0.1",
+    "python-dotenv>=1.0.1",
+    "loguru>=0.7.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.5.0",
+    "black>=24.4.0",
+    "mypy>=1.10.0",
+    "types-PyYAML>=6.0.12",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+    "RUF", # ruff-specific
+]
+ignore = [
+    "E501", # line too long (handled by formatter)
+    "B008", # function call in default argument (common in pydantic)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["B011"]  # allow asserts
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+warn_return_any = true
+warn_unused_ignores = true
+ignore_missing_imports = true

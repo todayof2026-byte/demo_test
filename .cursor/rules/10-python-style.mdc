@@ -1,0 +1,38 @@
+---
+description: Python style and quality conventions for src/ and tests/.
+globs:
+  - "**/*.py"
+alwaysApply: false
+---
+
+# Python style
+
+## Type hints
+- All public functions and methods MUST have type hints on parameters and return values.
+- Use `from __future__ import annotations` at the top of every module so forward references work everywhere.
+- Prefer `list[str]` over `List[str]`; we target Python 3.11+.
+
+## Docstrings
+- Every module starts with a one-line summary docstring, then a blank line, then details.
+- Public functions/classes get a docstring; trivial getters/setters do not need one.
+
+## Money
+- Use `decimal.Decimal` for prices, totals, thresholds. **Never `float`.**
+- Convert via `PriceParser` in `src/utils/price_parser.py`.
+
+## Logging
+- Use loguru via `from src.utils.logger import get_logger`.
+- **Never use `print`** in `src/`. In `tests/` only short status notes are acceptable.
+- Log levels: `DEBUG` for low-level (selector tries), `INFO` for user-visible actions, `WARNING` for fallbacks, `ERROR` for unrecoverable.
+
+## Errors
+- Catch the narrowest exception you reasonably can. Avoid bare `except:` and broad `except Exception:`.
+- When you must use a broad except (e.g. screenshot/report attachment), suppress with `# noqa: BLE001` and a comment explaining why.
+- Tests use `assert ... , "explanation"` - always include the failure message.
+
+## Formatting
+- `ruff` + `black` are configured in `pyproject.toml`. Run `ruff check . && black .` before committing.
+- Line length: 100.
+
+## Imports
+- Standard library, third-party, local - in three groups separated by a blank line. Ruff (`isort` rules) enforces this automatically.

@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "description": "Drive a real browser to verify locators, capture a11y snapshots, and explore PDP/cart pages live. Used by the /debug-failing-locator command."
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "."
+      ],
+      "description": "Project-scoped filesystem access (repo root only). Lets the assistant read data/*.yaml, write new pages, and update fixtures without leaving the workspace."
+    }
+  }
+}

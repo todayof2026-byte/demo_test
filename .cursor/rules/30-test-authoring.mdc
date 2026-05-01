@@ -1,0 +1,38 @@
+---
+description: Conventions for writing pytest tests under tests/.
+globs:
+  - "tests/**"
+alwaysApply: false
+---
+
+# Test authoring rules
+
+## File and test naming
+- Test files: `test_*.py`. Test functions: `test_<scenario>_<expected>` (e.g. `test_full_purchase_flow_under_budget`).
+- One file per high-level scenario family. Don't dump everything into one mega-file.
+
+## Markers (declared in `pytest.ini`)
+- `@pytest.mark.e2e` for full purchase flow tests.
+- `@pytest.mark.smoke` for fast sanity tests.
+- `@pytest.mark.search`, `@pytest.mark.cart` for area-specific tests.
+- `@pytest.mark.data_driven` when the test reads from `data/*.yaml`.
+
+## Allure
+- Wrap each high-level phase in `with allure.step("..."):`.
+- Add `@allure.epic`, `@allure.feature`, `@allure.story` once per test class/function.
+- For parameterized tests use `allure.dynamic.parameter(...)` to expose the inputs in the report.
+
+## What tests MUST do
+- Use the `page` fixture (or `guest_page` to bypass login).
+- Call into `src/flows/` for the four required user-flow functions; do NOT instantiate page objects directly in a test unless you're testing the page itself.
+- Fail with a descriptive message: `assert x == y, f"got {x!r}, expected {y!r}"`.
+
+## What tests MUST NOT do
+- Use `page.locator(...)` or any direct Playwright API. That belongs in pages/components.
+- Hard-code credentials. Read them from `.env` via `Settings`.
+- Use `time.sleep`.
+- Read or modify files outside the project root.
+
+## Data-driven tests
+- Load YAML in a module-level helper (see `tests/test_search_data_driven.py` for the pattern).
+- Pass a single `scenario` dict per parametrize id; never pass tuples - dicts read better in failure output.

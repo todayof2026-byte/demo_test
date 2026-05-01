@@ -1,0 +1,78 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+develop-eggs/
+.installed.cfg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.cache/
+nosetests.xml
+coverage.xml
+*.cover
+
+# Reports & artifacts (generated)
+reports/
+screenshots/
+videos/
+traces/
+.playwright-mcp/
+
+# Auth state (NEVER commit)
+auth/
+storage_state.json
+
+# Environment - plaintext .env NEVER committed.
+# secrets/credentials.sops.yaml IS committed (encrypted with SOPS+age).
+.env
+.env.local
+.env.*.local
+
+# Local age private key (must NEVER leave the machine).
+# (Default location is in the user profile, but be safe in case anyone copies it in.)
+keys.txt
+*.age
+age-key*.txt
+
+# IDE
+.idea/
+*.swp
+*.swo
+.vscode/launch.json
+.vscode/settings.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Type checkers
+.mypy_cache/
+.ruff_cache/
+
+# Allure
+allure-results/
+allure-report/
+
+# Logs
+*.log
+logs/

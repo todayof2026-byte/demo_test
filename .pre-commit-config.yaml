@@ -1,0 +1,52 @@
+# Pre-commit hooks for this project.
+#
+# Setup (once per machine):
+#   pip install pre-commit
+#   pre-commit install
+#
+# Manually run on all files:
+#   pre-commit run --all-files
+#
+# What this protects:
+#   - gitleaks       prevents committing API keys, JWTs, AWS keys, etc.
+#   - check-added-large-files / check-merge-conflict / detect-private-key
+#                    catches mistakes that gitignore alone cannot.
+#   - ruff           Python lint; matches our pyproject.toml config.
+#   - black          Python format; line length 100.
+#
+# Encrypted SOPS files (secrets/*.sops.yaml) are explicitly allow-listed in
+# .gitleaks.toml so they don't trip the secret scanner.
+
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+        name: gitleaks (secret scan)
+        description: Scan staged changes for accidentally-committed secrets.
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+        exclude: '^secrets/.*\.sops\.ya?ml$'   # encrypted YAML is intentionally non-standard
+      - id: check-json
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.4
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        language_version: python3

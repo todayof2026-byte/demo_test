@@ -1,0 +1,40 @@
+---
+description: How to choose, encapsulate, and stabilise locators on dynamic e-commerce pages.
+globs:
+  - "src/pages/**"
+  - "src/components/**"
+alwaysApply: false
+---
+
+# Locator strategy
+
+E-commerce pages are dynamic, A/B-tested, and rarely have stable test ids.
+Locators degrade. Build for it.
+
+## Preference order
+1. **Role + accessible name** (`get_by_role`) - survives most refactors.
+2. **`data-testid`** - if the team controls the markup.
+3. **Visible text** (`get_by_text` with `exact=True`).
+4. **CSS attribute selector** (`button[name='add']`) - good for stable form names.
+5. **XPath** - last resort. The exception is `SearchResultsPage.PRODUCT_CARD_XPATH`, which the brief explicitly mandates.
+
+## Multiple candidates pattern
+When a locator must be tolerant to layout drift, store candidates as a class-level tuple and pick the first visible one:
+
+```python
+EMAIL_CANDIDATES = (
+    "input[type='email']",
+    "input[name='customer[email]']",
+    "input#email",
+)
+```
+
+The `_first_visible(...)` / `_fill_first(...)` helpers already used in `LoginPage`, `PriceFilter`, and `Paginator` are the canonical implementation.
+
+## Forbidden anti-patterns
+- **Indexed nth-child chains** (`div > div > div:nth-child(3) span`).
+- **Generated class names** (`.css-1abc23xyz`) - they change on every deploy.
+- **Sleeping to wait for hydration** - use `wait_for_load_state("networkidle")` or `wait_for(state="visible")`.
+
+## When the locator MCP is enabled
+The project ships a `.cursor/mcp.json` with the Playwright MCP server. When investigating a broken locator, ask the assistant to use the MCP to navigate to the page, take a snapshot, and propose a stable selector. Document the new selector as a class-level candidate, not as an inline literal.

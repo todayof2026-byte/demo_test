@@ -1,0 +1,40 @@
+---
+description: High-level project context. Loaded for every interaction in this repo.
+alwaysApply: true
+---
+
+# E-commerce E2E - Project Overview
+
+This repository implements an end-to-end automation framework against
+[automationexercise.com](https://www.automationexercise.com) using
+**Python 3.11+, Playwright (sync API), and pytest**. It demonstrates clean
+test architecture for an exercise graded on:
+
+- **45%** Architecture & Code Cleanliness (POM, OOP, SRP, Utils)
+- **35%** Robustness & Smart Locators (dynamic content, variants, paging, price parsing)
+- **15%** Data-Driven (configuration, ENV, profiles)
+- **15%** Reports & Documentation
+
+## Layered architecture (top-down)
+
+1. **`tests/`** - pytest test cases. Only contain `assert`s and `allure.step` calls; no Playwright API usage.
+2. **`src/flows/`** - the 4 brief functions: `login`, `search_items_by_name_under_price`, `add_items_to_cart`, `assert_cart_total_not_exceeds`. Orchestrate page objects.
+3. **`src/pages/`** - Page Object Model. One class per logical page. Public methods describe user actions.
+4. **`src/components/`** - reusable widgets (header, price filter, product card, paginator) used by multiple pages.
+5. **`src/utils/`** - cross-cutting helpers (price parser, screenshot+Allure, loguru, random variant pick).
+6. **`src/config/`** - typed settings via pydantic-settings; profile per region.
+7. **`data/`** - YAML data-driven inputs.
+
+## Strict rules
+
+- **Do not put assertions inside page objects or components** - assertions live in tests or in flows that explicitly assert.
+- **Do not use `time.sleep` or hard waits** - use Playwright's auto-wait or `wait_for_load_state`.
+- **Use `Decimal` for money** - never `float`. The `PriceParser` utility is the single source of price truth.
+- **Locator priority**: role-based -> data-testid -> text -> XPath. The brief explicitly mandates XPath in `SearchResultsPage.PRODUCT_CARD_XPATH`; that's the only XPath in production code.
+- **One responsibility per module**. If a file does two unrelated things, split it.
+
+## Quick links
+
+- Brief HTML: [`exercise-brief.html`](mdc:exercise-brief.html)
+- AI workflow: [`docs/ai-workflow.md`](mdc:docs/ai-workflow.md)
+- AGENTS playbook: [`AGENTS.md`](mdc:AGENTS.md)

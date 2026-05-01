@@ -1,0 +1,30 @@
+# SOPS configuration.
+#
+# This file declares which encryption recipients are allowed to decrypt which
+# files. SOPS reads it automatically when run anywhere inside this repo.
+#
+# Workflow:
+#   1. Install sops and age (see scripts/setup-secrets.ps1 or the README).
+#   2. Generate an age key:    age-keygen -o ~/.config/sops/age/keys.txt
+#      (Windows path: $env:USERPROFILE\.config\sops\age\keys.txt)
+#   3. Copy the public key (the line starting "# public key: age1...") into
+#      the `age:` field below, replacing the placeholder.
+#   4. Encrypt your .env in place:   .\scripts\encrypt-env.ps1
+#      That produces secrets/credentials.sops.yaml (committed) and leaves
+#      .env untouched (gitignored).
+#   5. To decrypt later (or on another machine):   .\scripts\decrypt-env.ps1
+#
+# To grant a reviewer decryption access without sharing your private key,
+# add THEIR public age key to the `age:` list below and re-encrypt:
+#   sops updatekeys secrets/credentials.sops.yaml
+#
+# Notes:
+# - The `age:` value is the PUBLIC half of an age keypair. It is safe to
+#   commit. Only holders of the corresponding private key can decrypt.
+# - The placeholder below MUST be replaced before encryption will work.
+
+creation_rules:
+  - path_regex: ^secrets/.*\.sops\.(ya?ml|json|env)$
+    encrypted_regex: "^(?!sops_).*"
+    age: >-
+      age1n04y4yzra2cxada5pqx30y73yhhmulp4p02qn5zp0qq5453da3zq5nuna2
