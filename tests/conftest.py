@@ -255,6 +255,111 @@ def _attach_artefact(path: Path, name: str, mime: str) -> None:
         _log.warning(f"Failed to attach {name}: {exc}")
 
 
+# ----------------------------------------------------------- ad-popup auto-dismiss
+# automationexercise.com periodically renders a third-party programmatic
+# ad pop-up (PixVerse / "Top-Tier AI Engine" overlay, etc.) on top of the
+# page. Left alone, it covers the search box / cart button and breaks
+# every test deterministically. Playwright 1.42+ exposes
+# ``page.add_locator_handler``, which fires our handler whenever any of
+# the matched selectors becomes visible - even mid-action. The handler
+# clicks Close and resumes the original action transparently, so the
+# test code stays clean of overlay-handling boilerplate.
+#
+# Two layers of defence:
+#   1. Network blocking: drop requests to known ad-network hosts BEFORE
+#      they ever render. Cheaper than catching the overlay after the fact.
+#   2. Locator handler: catch anything that slips through (in-page
+#      modals served from the same origin, etc.).
+_AD_HOST_FRAGMENTS: tuple[str, ...] = (
+    "doubleclick.net",
+    "googlesyndication.com",
+    "google-analytics.com",
+    "googletagmanager.com",
+    "googleadservices.com",
+    "pixverse",
+    "adservice",
+    "popads",
+    "propellerads",
+    "outbrain",
+    "taboola",
+)
+
+# Selectors for the visible overlay's close affordance. These match the
+# common ``Close`` link / X button patterns we see on automationexercise
+# (the PixVerse modal in particular uses "Close" plain text in a styled
+# anchor / button at the top-right). Order matters - most specific first.
+_AD_POPUP_CLOSE_SELECTORS: tuple[str, ...] = (
+    "div[id*='ad'] button[aria-label='Close']",
+    "div[class*='popup'] button[aria-label='Close']",
+    "div[class*='modal'][role='dialog'] [aria-label='Close']",
+    # PixVerse-style: a literal ``Close`` text link at the top of an
+    # ad container. Scoped to elements that look like ad/promo/popup
+    # wrappers to avoid matching the site's own Cart "Continue
+    # shopping" close button.
+    "[class*='ad-' i] :text-is('Close')",
+    "[class*='promo' i] :text-is('Close')",
+    "[class*='popup' i] :text-is('Close')",
+    "[id*='popup' i] :text-is('Close')",
+    "[class*='offer' i] :text-is('Close')",
+)
+
+# Combined CSS - Playwright comma-or accepts every selector in one go.
+_AD_POPUP_HANDLER_SELECTOR = ", ".join(_AD_POPUP_CLOSE_SELECTORS)
+
+
+def _install_ad_popup_handler(page: Page) -> None:
+    """Register an auto-dismiss handler for ad pop-ups on this page.
+
+    Called immediately after ``ctx.new_page()``. The handler runs
+    whenever any of the close affordances becomes visible during
+    a wait or action - it clicks the close, then Playwright retries
+    the original action transparently.
+
+    Never raises - if the Playwright build doesn't support
+    ``add_locator_handler`` for some reason, we log and continue.
+    """
+    try:
+        close_locator = page.locator(_AD_POPUP_HANDLER_SELECTOR).first
+
+        def _close_handler() -> None:
+            try:
+                close_locator.click(timeout=2_000)
+                _log.info("Auto-dismissed ad pop-up via locator handler")
+            except Exception as exc:  # noqa: BLE001 - best-effort
+                _log.debug(f"Ad pop-up handler click skipped: {exc}")
+
+        page.add_locator_handler(close_locator, _close_handler)
+    except Exception as exc:  # noqa: BLE001
+        _log.warning(f"Could not install ad-popup handler: {exc}")
+
+
+def _block_ad_networks(ctx: BrowserContext) -> None:
+    """Drop network requests to known ad / analytics hosts.
+
+    Cheaper than dismissing the overlay after the fact - if the ad
+    never loads, the overlay never renders. Wildcard-only because
+    request URLs vary wildly across ad networks; matching on
+    ``Request.url`` substring keeps the rule short and robust.
+    """
+    def _route(route, request) -> None:  # noqa: ANN001
+        url_lower = request.url.lower()
+        if any(fragment in url_lower for fragment in _AD_HOST_FRAGMENTS):
+            try:
+                route.abort()
+                return
+            except Exception:  # noqa: BLE001
+                pass
+        try:
+            route.continue_()
+        except Exception:  # noqa: BLE001
+            pass
+
+    try:
+        ctx.route("**/*", _route)
+    except Exception as exc:  # noqa: BLE001
+        _log.warning(f"Could not install ad-network blocker: {exc}")
+
+
 @pytest.fixture()
 def context(
     browser: Browser,
@@ -269,6 +374,7 @@ def context(
         args["storage_state"] = str(settings.storage_state_path)
 
     ctx = browser.new_context(**args)
+    _block_ad_networks(ctx)
     ctx.set_default_timeout(settings.action_timeout_ms)
     ctx.set_default_navigation_timeout(settings.navigation_timeout_ms)
     ctx.tracing.start(screenshots=True, snapshots=True, sources=True)
@@ -290,6 +396,7 @@ def context(
 @pytest.fixture()
 def page(context: BrowserContext) -> Generator[Page, None, None]:  # noqa: F811
     p = context.new_page()
+    _install_ad_popup_handler(p)
     try:
         yield p
     finally:
@@ -326,11 +433,13 @@ def logged_in_page(
 
     args = _build_context_args(settings, browser_context_args, test_evidence_dir)
     ctx = browser.new_context(**args)
+    _block_ad_networks(ctx)
     ctx.set_default_timeout(settings.action_timeout_ms)
     ctx.set_default_navigation_timeout(settings.navigation_timeout_ms)
     ctx.tracing.start(screenshots=True, snapshots=True, sources=True)
 
     p = ctx.new_page()
+    _install_ad_popup_handler(p)
     try:
         with allure.step("Precondition: log in with real credentials"):
             login_page = LoginPage(p).open()
@@ -372,11 +481,13 @@ def guest_page(
     """
     args = _build_context_args(settings, browser_context_args, test_evidence_dir)
     ctx = browser.new_context(**args)
+    _block_ad_networks(ctx)
     ctx.set_default_timeout(settings.action_timeout_ms)
     ctx.set_default_navigation_timeout(settings.navigation_timeout_ms)
     ctx.tracing.start(screenshots=True, snapshots=True, sources=True)
 
     p = ctx.new_page()
+    _install_ad_popup_handler(p)
     try:
         yield p
     finally:
