@@ -30,10 +30,21 @@ from src.flows import (
     assert_cart_total_not_exceeds,
     search_items_by_name_under_price,
 )
+from src.pages.cart_page import CartPage
+from src.pages.checkout_page import CheckoutPage
 
 
 @allure.epic("automationexercise.com E2E")
 @allure.feature("Purchase flow")
+@allure.title(
+    "End-to-end purchase flow: logged-in search -> add to cart -> "
+    "assert cart total -> verify checkout summary"
+)
+@allure.severity(allure.severity_level.CRITICAL)
+@allure.tag(
+    "e2e", "purchase-flow", "search", "cart", "checkout",
+    "brief-section-4-1", "brief-section-4-2", "brief-section-4-3",
+)
 @allure.story("Logged-in user: search, add to cart, assert subtotal")
 @pytest.mark.e2e
 def test_full_purchase_flow_under_budget(logged_in_page) -> None:  # noqa: ANN001
@@ -42,6 +53,10 @@ def test_full_purchase_flow_under_budget(logged_in_page) -> None:  # noqa: ANN00
     query = "tshirt"
     budget_per_item = 1500.0
     limit = 5
+
+    with allure.step("0. Ensure the cart is empty (clear stale server-side items)"):
+        cart = CartPage(page).open()
+        cart.delete_all_items()
 
     with allure.step(f"1. Find up to {limit} '{query}' priced <= Rs.{budget_per_item}"):
         urls = search_items_by_name_under_price(page, query, budget_per_item, limit)
@@ -58,4 +73,42 @@ def test_full_purchase_flow_under_budget(logged_in_page) -> None:  # noqa: ANN00
         assert added > 0, "Expected at least one item to be added to the cart."
 
     with allure.step("3. Assert cart subtotal does not exceed budget * count"):
-        assert_cart_total_not_exceeds(page, budget_per_item, added)
+        cart_subtotal = assert_cart_total_not_exceeds(page, budget_per_item, added)
+
+    with allure.step("4. Proceed to checkout and verify the summary page"):
+        CartPage(page).proceed_to_checkout()
+        checkout = CheckoutPage(page)
+
+        assert checkout.has_review_heading(), (
+            "/checkout: 'Review Your Order' heading not visible"
+        )
+        assert checkout.has_address_heading(), (
+            "/checkout: 'Address Details' heading not visible"
+        )
+        assert checkout.has_delivery_address(), (
+            "/checkout: delivery address block missing"
+        )
+        assert checkout.has_billing_address(), (
+            "/checkout: billing address block missing"
+        )
+        assert checkout.has_place_order_button(), (
+            "/checkout: 'Place Order' button not visible"
+        )
+
+        checkout_lines = checkout.line_item_count()
+        assert checkout_lines == added, (
+            f"/checkout shows {checkout_lines} items but we added {added}"
+        )
+
+        checkout_total = checkout.get_total()
+        assert checkout_total == cart_subtotal, (
+            f"/checkout total ({checkout_total}) != cart subtotal "
+            f"({cart_subtotal})"
+        )
+
+        threshold = budget_per_item * added
+        assert float(checkout_total) <= threshold, (
+            f"/checkout total {checkout_total} exceeds "
+            f"{budget_per_item} * {added} = {threshold}"
+        )
+        checkout.screenshot("checkout_review_your_order")

@@ -37,6 +37,12 @@ _BOGUS_PASSWORD = "this-is-definitely-not-the-password"
     "Recovery flow: type wrong creds, see error, retry with correct creds, "
     "no browser close in between"
 )
+@allure.title(
+    "Login: wrong password is rejected, then correct password authenticates "
+    "in the same browser window"
+)
+@allure.severity(allure.severity_level.BLOCKER)
+@allure.tag("smoke", "auth", "login", "brief-section-4")
 @pytest.mark.smoke
 def test_login_negative_then_positive(guest_page) -> None:  # noqa: ANN001
     """Drive both negative and positive paths in one browser window.

@@ -71,11 +71,24 @@ def _screenshots_dir() -> Path:
 
 
 def take_screenshot(page: "Page", name: str) -> Path:
-    """Save a full-page screenshot under the per-test folder and return the path."""
+    """Save a full-page screenshot under the per-test folder and return the path.
+
+    Uses a generous 30-second timeout and falls back to a viewport-only
+    capture if full-page times out (heavy sites sometimes stall on font
+    rendering when ``full_page=True``).
+    """
     safe_name = "".join(c if c.isalnum() or c in "._-" else "_" for c in name)
     seq = f"{_next_seq():02d}"
     target = _screenshots_dir() / f"{seq}_{safe_name}.png"
-    page.screenshot(path=str(target), full_page=True)
+    try:
+        page.screenshot(path=str(target), full_page=True, timeout=30_000)
+    except Exception:  # noqa: BLE001
+        try:
+            page.screenshot(path=str(target), full_page=False, timeout=10_000)
+            _log.warning(f"Full-page screenshot timed out; saved viewport-only: {target}")
+        except Exception as exc:  # noqa: BLE001
+            _log.warning(f"Screenshot failed entirely for '{name}': {exc}")
+            return target
     _log.info(f"Saved screenshot: {target}")
     return target
 

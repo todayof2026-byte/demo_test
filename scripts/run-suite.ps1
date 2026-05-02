@@ -43,6 +43,30 @@ Push-Location $repoRoot
 try {
     $env:PYTHONUNBUFFERED = "1"
 
+    # ----------------------------------------------------------------------
+    # Pre-flight: kill any leftover Chrome / Chromium / Node / pytest python
+    # processes from a previous run. pytest-playwright's session teardown can
+    # leak headless chrome workers when a run is aborted (Ctrl+C, hung
+    # network, OS sleep, etc.) and those zombies hold handles the next
+    # session needs - which is exactly how we get the multi-minute teardown
+    # hangs. Wiping them up-front guarantees a fresh slate every invocation.
+    # ----------------------------------------------------------------------
+    Write-Host "Pre-flight: killing stale browser/test processes..." -ForegroundColor DarkGray
+    $killNames = @('chrome', 'chromium', 'msedgewebview2', 'node', 'playwright')
+    foreach ($n in $killNames) {
+        Get-Process -Name $n -ErrorAction SilentlyContinue |
+            Stop-Process -Force -ErrorAction SilentlyContinue
+    }
+    # Be careful with python: only kill pythons that look like a stuck
+    # pytest worker (i.e. have ``pytest`` in their command line). We do
+    # NOT want to kill the IDE's language server or unrelated scripts.
+    Get-CimInstance Win32_Process -Filter "Name='python.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -match 'pytest' -and $_.ProcessId -ne $PID } |
+        ForEach-Object {
+            Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+        }
+    Start-Sleep -Milliseconds 500
+
     $orderedTargets = @(
         "tests/test_login.py",
         "tests/test_e2e_purchase_flow.py",
@@ -67,13 +91,30 @@ try {
     $rc = $LASTEXITCODE
 
     Write-Host ""
+    Write-Host "========================================" -ForegroundColor Cyan
     if ($rc -eq 0) {
-        Write-Host "All suite tests passed." -ForegroundColor Green
-        Write-Host "Build the HTML report:  .\scripts\build-report.ps1" -ForegroundColor Cyan
-        Write-Host "Open the HTML report :  .\scripts\open-report.ps1" -ForegroundColor Cyan
+        Write-Host "  All suite tests PASSED." -ForegroundColor Green
     } else {
-        Write-Host "Suite finished with exit code $rc." -ForegroundColor Yellow
+        Write-Host "  Suite finished with exit code $rc." -ForegroundColor Yellow
     }
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
+
+    # Auto-build the Allure HTML report so it's ready to view immediately.
+    if (Test-Path "reports\allure-results") {
+        Write-Host "Building Allure HTML report..." -ForegroundColor Cyan
+        try {
+            allure generate "reports/allure-results" --clean -o "reports/allure-html" 2>&1 | Out-Null
+            Write-Host "  Report ready at: reports\allure-html\index.html" -ForegroundColor Green
+            Write-Host "  View it:  .\scripts\open-report.ps1" -ForegroundColor Cyan
+        } catch {
+            Write-Host "  allure generate failed: $_" -ForegroundColor Yellow
+        }
+    }
+
+    Write-Host ""
+    Write-Host "Press any key to close this window..." -ForegroundColor DarkGray
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     exit $rc
 }
 finally {

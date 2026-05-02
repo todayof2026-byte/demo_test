@@ -36,6 +36,7 @@ import json
 import os
 import shutil
 import sys
+import threading
 import time
 from collections.abc import Generator
 from datetime import datetime, timezone
@@ -554,10 +555,103 @@ def pytest_runtest_makereport(item, call):  # noqa: ANN001
             _log.warning(f"Failed to write summary.json: {exc}")
 
 
+# --------------------------------------------------------------------- allure metadata
+# These two files live alongside the per-test Allure result JSONs and are
+# read by ``allure generate`` to enrich the HTML report:
+#
+#   * environment.properties - the "Environment" widget on the overview page
+#     (browser, headed/headless, base URL, Python/Playwright versions, ...)
+#   * categories.json        - custom defect taxonomies so the "Categories"
+#     tab groups failures by root cause (selector miss, network, assertion).
+#
+# We write them at session start so they always reflect THIS run, not a
+# stale copy from a previous one. ``clear-reports.ps1`` is fine to wipe
+# them because they're regenerated on every pytest invocation.
+_ALLURE_RESULTS_DIR = _REPO_ROOT / "reports" / "allure-results"
+
+_ALLURE_CATEGORIES = [
+    {
+        "name": "Selector / locator drift",
+        "matchedStatuses": ["failed", "broken"],
+        "messageRegex": ".*(Locator|TimeoutError|element is not|waiting for selector|"
+        "strict mode violation).*",
+    },
+    {
+        "name": "Authentication failure",
+        "matchedStatuses": ["failed", "broken"],
+        "messageRegex": ".*(login|sign[- ]?in|credential|password|"
+        "Logged in as|storage_state).*",
+    },
+    {
+        "name": "Network / navigation",
+        "matchedStatuses": ["failed", "broken"],
+        "messageRegex": ".*(net::|ERR_|navigation|net::ERR|page\\.goto|Timeout.*navigating).*",
+    },
+    {
+        "name": "Cart / total assertion",
+        "matchedStatuses": ["failed"],
+        "messageRegex": ".*(cart|subtotal|total|exceeds|budget).*",
+    },
+    {
+        "name": "Pop-up / overlay interference",
+        "matchedStatuses": ["failed", "broken"],
+        "messageRegex": ".*(overlay|modal|popup|advertisement|consent|cookie banner).*",
+    },
+]
+
+
+def _write_allure_environment(results_dir: Path) -> None:
+    """Dump the active configuration into ``environment.properties``."""
+    try:
+        s = get_settings()
+        try:
+            import playwright as _pw  # type: ignore[import]
+
+            playwright_version = getattr(_pw, "__version__", "unknown")
+        except Exception:  # noqa: BLE001
+            playwright_version = "unknown"
+
+        props = {
+            "Site": s.profile.value if hasattr(s.profile, "value") else str(s.profile),
+            "Base.URL": getattr(s, "base_url", "unknown"),
+            "Currency": getattr(s, "currency_code", "unknown"),
+            "Browser": getattr(s, "browser", "chromium"),
+            "Headed": str(getattr(s, "headed", False)).lower(),
+            "Slow.Mo.ms": str(getattr(s, "slow_mo", 0)),
+            "Force.Fresh.Login": str(_FORCE_FRESH_LOGIN).lower(),
+            "OS": f"{sys.platform}",
+            "Python": sys.version.split()[0],
+            "Playwright": playwright_version,
+            "Run.Started": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        }
+        results_dir.mkdir(parents=True, exist_ok=True)
+        # environment.properties is a flat key=value file (Java .properties).
+        (results_dir / "environment.properties").write_text(
+            "\n".join(f"{k}={v}" for k, v in props.items()) + "\n",
+            encoding="utf-8",
+        )
+    except Exception as exc:  # noqa: BLE001
+        _log.warning(f"Could not write Allure environment.properties: {exc}")
+
+
+def _write_allure_categories(results_dir: Path) -> None:
+    """Dump the failure taxonomy into ``categories.json``."""
+    try:
+        results_dir.mkdir(parents=True, exist_ok=True)
+        (results_dir / "categories.json").write_text(
+            json.dumps(_ALLURE_CATEGORIES, indent=2),
+            encoding="utf-8",
+        )
+    except Exception as exc:  # noqa: BLE001
+        _log.warning(f"Could not write Allure categories.json: {exc}")
+
+
 # --------------------------------------------------------------------------- env shim
 def pytest_configure(config: pytest.Config) -> None:  # noqa: D401
     """Make sure cwd is the repo root so .env loading works regardless of caller."""
     os.chdir(_REPO_ROOT)
+    _write_allure_environment(_ALLURE_RESULTS_DIR)
+    _write_allure_categories(_ALLURE_RESULTS_DIR)
 
 
 # --------------------------------------------- forceful session finalisation
@@ -608,3 +702,53 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     except Exception:  # noqa: BLE001
         pass
     os._exit(exitstatus)
+
+
+# --------------------------------------------- post-last-test watchdog
+# Why this on top of pytest_sessionfinish:
+# ----------------------------------------
+# pytest's hook order at the end of a session is:
+#   1. pytest_runtest_logfinish (per test, after teardown of that test)
+#   2. session-scoped fixture finalisers (pytest-playwright's ``browser``
+#      and ``playwright`` are the slow ones - they call into the chromium
+#      driver greenlet which can hang for many minutes on Win + Py 3.13)
+#   3. pytest_sessionfinish
+#
+# Our ``pytest_sessionfinish`` ``os._exit`` only fires AFTER step 2, so if
+# step 2 hangs we never reach the safety net. The watchdog below kicks in
+# at step 1 boundary: once the LAST test's report is written, it schedules
+# a daemon thread that ``os._exit``s after a short grace period regardless
+# of whether step 2 finishes. This guarantees we never sit in zombie
+# teardown for more than ``_WATCHDOG_GRACE_S`` seconds.
+_TESTS_REMAINING: dict[str, int] = {"count": 0}
+_SESSION_EXIT_CODE: dict[str, int] = {"code": 0}
+_WATCHDOG_GRACE_S = 15
+
+
+def pytest_collection_modifyitems(session, config, items) -> None:  # noqa: ANN001
+    _TESTS_REMAINING["count"] = len(items)
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_runtest_logreport(report) -> None:  # noqa: ANN001
+    """Track whether any test has failed so the watchdog can exit with the right code."""
+    if report.when == "call" and report.failed:
+        _SESSION_EXIT_CODE["code"] = 1
+
+
+def pytest_runtest_logfinish(nodeid, location) -> None:  # noqa: ANN001
+    """When the last test reports back, arm an os._exit watchdog timer."""
+    _TESTS_REMAINING["count"] -= 1
+    if _TESTS_REMAINING["count"] > 0:
+        return
+
+    def _watchdog() -> None:
+        time.sleep(_WATCHDOG_GRACE_S)
+        try:
+            sys.stdout.flush()
+            sys.stderr.flush()
+        except Exception:  # noqa: BLE001
+            pass
+        os._exit(_SESSION_EXIT_CODE["code"])
+
+    threading.Thread(target=_watchdog, daemon=True, name="pytest-exit-watchdog").start()

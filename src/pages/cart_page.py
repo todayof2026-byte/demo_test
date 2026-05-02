@@ -25,6 +25,12 @@ class CartPage(BasePage):
     LINE_PRICE_SELECTOR = "td.cart_price p"
     LINE_QUANTITY_SELECTOR = "td.cart_quantity button.disabled"
 
+    # "Proceed To Checkout" button: anchor with classes
+    # ``btn btn-default check_out``. ``href`` is empty - it's bound to a
+    # JS handler that navigates to ``/checkout`` (only works for
+    # authenticated users; unauthenticated visitors get a modal).
+    PROCEED_TO_CHECKOUT = "a.check_out"
+
     # Empty-cart marker: the site renders this paragraph + a "Click here to buy
     # more products" anchor when the cart has zero rows.
     EMPTY_CART_MARKER = "#empty_cart"
@@ -86,6 +92,29 @@ class CartPage(BasePage):
         except PlaywrightTimeout:
             return 0
 
+    def delete_all_items(self) -> int:
+        """Remove every item from the cart. Returns the number of items deleted."""
+        count = self.line_item_count()
+        if count == 0:
+            return 0
+        self.log.info(f"Clearing {count} stale item(s) from cart")
+        deleted = 0
+        while True:
+            remove_btns = self.page.locator("a.cart_quantity_delete")
+            try:
+                if remove_btns.count() == 0:
+                    break
+            except PlaywrightTimeout:
+                break
+            try:
+                remove_btns.first.click(timeout=3_000)
+                self.page.wait_for_timeout(600)
+                deleted += 1
+            except PlaywrightTimeout:
+                break
+        self.log.info(f"Deleted {deleted} item(s) from cart")
+        return deleted
+
     def is_empty(self) -> bool:
         try:
             return (
@@ -94,3 +123,31 @@ class CartPage(BasePage):
             )
         except PlaywrightTimeout:
             return self.line_item_count() == 0
+
+    # ---------------------------------------------------------------- transitions
+    def proceed_to_checkout(self) -> None:
+        """Click the "Proceed To Checkout" button and wait for ``/checkout``.
+
+        The button's ``href`` is empty (JS-bound), so we wait for the URL
+        change rather than relying on a hard navigation event. Caller is
+        expected to construct a :class:`CheckoutPage` afterwards.
+        """
+        self.log.info("Clicking 'Proceed To Checkout'")
+        try:
+            self.page.locator(self.PROCEED_TO_CHECKOUT).first.click(timeout=5_000)
+        except PlaywrightTimeout:
+            self.log.warning(
+                "'Proceed To Checkout' button not clickable; "
+                "falling back to direct /checkout navigation"
+            )
+            self.open("/checkout")
+            return
+
+        try:
+            self.page.wait_for_url("**/checkout", timeout=8_000)
+        except PlaywrightTimeout:
+            self.log.warning(
+                "URL did not switch to /checkout within 8s; "
+                "falling back to direct navigation"
+            )
+            self.open("/checkout")

@@ -39,6 +39,8 @@ _SCENARIOS = _load_scenarios()
 
 @allure.epic("automationexercise.com E2E")
 @allure.feature("Search with price filter")
+@allure.severity(allure.severity_level.NORMAL)
+@allure.tag("search", "data-driven", "brief-section-4-1")
 @pytest.mark.search
 @pytest.mark.data_driven
 @pytest.mark.parametrize(
@@ -51,10 +53,21 @@ def test_search_returns_urls_within_budget(
     scenario: dict[str, Any],
 ) -> None:
     """Returned URLs are at most ``limit``, are all PDPs, and are unique."""
+    # Set a human-readable title and parameter set BEFORE doing any work,
+    # so the Allure report shows them even if the test errors early.
+    allure.dynamic.title(
+        "Search '{query}' under Rs.{max_price} (limit={limit}) -> "
+        "<= {limit} unique PDP URLs".format(**scenario)
+    )
     allure.dynamic.story(scenario.get("description", scenario["id"]))
     allure.dynamic.parameter("query", scenario["query"])
     allure.dynamic.parameter("max_price", scenario["max_price"])
     allure.dynamic.parameter("limit", scenario["limit"])
+    # Per-scenario severity: the empty-result case is a documentation
+    # smoke - returning [] is valid per the brief - and shouldn't draw
+    # the eye in a report. The price-filter scenarios are normal.
+    if scenario["id"].startswith("empty"):
+        allure.dynamic.severity(allure.severity_level.MINOR)
 
     urls = search_items_by_name_under_price(
         logged_in_page,
