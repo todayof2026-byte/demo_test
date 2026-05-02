@@ -195,6 +195,26 @@ failure.
 | `@allure.title` | Human-readable labels including parametrized values |
 | `@allure.tag` | Brief section tags (`brief-section-4-1`, etc.) for filtering |
 
+### Viewing the report
+
+> **Important:** the Allure HTML report uses JavaScript that browsers
+> block when opened via `file://`. You **must** serve it over HTTP.
+> Three easy options:
+
+```powershell
+# Option 1 (recommended): run the suite — it auto-builds the report at the end
+.\scripts\run-suite.ps1
+
+# Option 2: build + serve in two steps
+.\scripts\build-report.ps1        # generates reports/allure-html/
+.\scripts\open-report.ps1         # serves at http://127.0.0.1:3181
+
+# Option 3: one-shot serve from raw results (no build step)
+.\scripts\view-report.ps1         # allure serve — opens browser automatically
+```
+
+Then open **http://127.0.0.1:3181** in your browser.
+
 ### Where the evidence lives
 
 ```
