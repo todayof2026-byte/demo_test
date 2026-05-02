@@ -1,16 +1,23 @@
-"""End-to-end purchase flow.
+"""End-to-end purchase flow on automationexercise.com.
 
 This is the headline scenario from the brief: login -> search -> add to cart
--> assert total. It chains the four required functions exactly as the brief's
-example shows.
+-> assert total. It chains the four required functions exactly as the
+brief's example shows.
 
-STATUS: temporarily skipped during the pivot to automationexercise.com.
+Login is delivered as a fixture precondition (``logged_in_page``) rather
+than inlined in the test body so the test reads as the business flow,
+not the plumbing. The fixture's Allure step is "Precondition: log in
+with real credentials"; the test's own steps start from step 1 below.
 
-The login flow has been ported (see ``tests/test_login.py``); the search,
-add-to-cart, and cart-subtotal flows still target the previous storefront's
-selectors and need their own port. The test is left in place (rather than
-deleted) so the file structure matches the brief and the next contributor
-sees exactly which scenarios remain.
+automationexercise.com specifics that shape the test
+----------------------------------------------------
+* The catalogue uses INR ("Rs.") prices - typical t-shirts are ~Rs. 500
+  so a budget of Rs. 1500/item gives plenty of matches without being
+  trivially permissive.
+* No UI price filter and no real pagination on search results, so the
+  search flow filters client-side and stops after page 1; both behaviours
+  are documented in :mod:`src.flows.search_flow` and
+  :mod:`src.pages.search_results_page`.
 """
 
 from __future__ import annotations
@@ -27,17 +34,11 @@ from src.flows import (
 
 @allure.epic("automationexercise.com E2E")
 @allure.feature("Purchase flow")
-@allure.story("Search, add to cart, assert total")
+@allure.story("Logged-in user: search, add to cart, assert subtotal")
 @pytest.mark.e2e
-@pytest.mark.skip(
-    reason=(
-        "Search and cart pages have not been ported to automationexercise.com yet. "
-        "The login flow is covered by tests/test_login.py. "
-        "Track: pivot search & cart selectors, then re-enable this test."
-    ),
-)
-def test_full_purchase_flow_under_budget(page) -> None:  # noqa: ANN001
-    """Search -> add to cart -> assert subtotal. Re-enable after pivoting search/cart."""
+def test_full_purchase_flow_under_budget(logged_in_page) -> None:  # noqa: ANN001
+    """Search -> add to cart -> assert subtotal, all in one logged-in session."""
+    page = logged_in_page
     query = "tshirt"
     budget_per_item = 1500.0
     limit = 5
@@ -47,7 +48,10 @@ def test_full_purchase_flow_under_budget(page) -> None:  # noqa: ANN001
         assert isinstance(urls, list), "search_items_by_name_under_price must return a list"
 
     if not urls:
-        pytest.skip("No items matched the price condition - cannot exercise add-to-cart.")
+        pytest.skip(
+            "No items matched the price condition - the catalogue may have "
+            "shifted. Cannot exercise add-to-cart with zero matches."
+        )
 
     with allure.step(f"2. Add {len(urls)} items to the cart"):
         added = add_items_to_cart(page, urls)

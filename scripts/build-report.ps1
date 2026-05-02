@@ -1,0 +1,45 @@
+<#
+.SYNOPSIS
+  Build a static Allure HTML report from the latest pytest run.
+
+.DESCRIPTION
+  Wraps `allure generate ... --clean` into a single command. After it
+  finishes, IMPORTANT: the report MUST be opened over HTTP, not file://,
+  because Allure loads its widgets via AJAX and browsers block XHR from
+  file:// origins (you'll see seven "Loading..." panels forever).
+
+  To view the built report:
+      .\scripts\open-report.ps1            # uses `allure open`
+  Or share it: zip the entire `reports\allure-html\` folder; the recipient
+  can serve it with any static-file server (`python -m http.server` works).
+
+.NOTES
+  Requires the Allure CLI on PATH.
+    - Windows:  scoop install allure
+    - npm:      npm install -g allure-commandline
+#>
+
+$ErrorActionPreference = "Stop"
+
+$repoRoot = Split-Path -Parent $PSScriptRoot
+Push-Location $repoRoot
+try {
+    if (-not (Test-Path "reports\allure-results")) {
+        Write-Host "No allure results found at reports\allure-results." -ForegroundColor Yellow
+        Write-Host "Run pytest first, e.g.:  pytest tests/ -v" -ForegroundColor Yellow
+        exit 1
+    }
+
+    Write-Host "Generating Allure HTML report..." -ForegroundColor Cyan
+    allure generate "reports/allure-results" --clean -o "reports/allure-html"
+
+    Write-Host ""
+    Write-Host "HTML report ready at: reports\allure-html\" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "IMPORTANT: open it via HTTP, not file:// (CORS blocks file:// XHR)." -ForegroundColor Yellow
+    Write-Host "  Run:  .\scripts\open-report.ps1" -ForegroundColor Cyan
+    Write-Host "  Or:   allure open reports/allure-html" -ForegroundColor Cyan
+}
+finally {
+    Pop-Location
+}

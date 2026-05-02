@@ -1,10 +1,14 @@
-"""Product detail page (PDP) POM.
+"""Product detail page (PDP) POM for automationexercise.com.
 
-Responsibilities:
-* Read available size variants and their stock state.
-* Pick a random in-stock size when required.
-* Click "Add to cart" and confirm acceptance.
-* Dismiss the post-add side panel / modal so we can return to search.
+PDP URL pattern: ``/product_details/<id>``.
+
+Surface used by the cart flow:
+* No size / colour variants on this site - the only product-level input is
+  a quantity field (``#quantity``). :meth:`select_random_in_stock_size`
+  becomes a no-op that returns ``None`` (kept for cross-storefront API
+  compatibility with the brief).
+* :meth:`add_to_cart` clicks ``button.cart`` and dismisses the
+  ``#cartModal`` confirmation that opens after every successful add.
 """
 
 from __future__ import annotations
@@ -12,121 +16,63 @@ from __future__ import annotations
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 
 from src.pages.base_page import BasePage
-from src.utils import pick_random_in_stock
 
 
 class ProductPage(BasePage):
-    """Wraps ``/products/<slug>``."""
+    """Wraps ``/product_details/<id>``."""
 
-    SIZE_OPTION_CANDIDATES: tuple[str, ...] = (
-        "fieldset[data-product-option*='size' i] input[type='radio']",
-        "fieldset:has(legend:text-matches('size', 'i')) input[type='radio']",
-        "[data-option-name='Size'] input",
-        "input[name*='Size' i]",
-    )
-    SIZE_OPTION_LABEL = "label[for='{id}']"
+    QUANTITY_INPUT = "#quantity"
 
     ADD_TO_CART_CANDIDATES: tuple[str, ...] = (
-        "button[name='add']",
-        "button[aria-label*='Add to cart' i]",
+        "button.cart",
+        "button.btn.btn-default.cart",
         "button:has-text('Add to cart')",
-        "button:has-text('Add to bag')",
-        "button:has-text('Add to basket')",
     )
 
-    POST_ADD_DIALOG_CLOSE = (
-        "button:has-text('Continue shopping')",
-        "button[aria-label='Close']",
-        "[role='dialog'] button[aria-label='Close']",
+    # Modal that opens after a successful add-to-cart click.
+    POST_ADD_MODAL = "#cartModal"
+    POST_ADD_DIALOG_CLOSE: tuple[str, ...] = (
+        "#cartModal button.close-modal",
+        "#cartModal button:has-text('Continue Shopping')",
+        "button.close-modal",
     )
 
-    CART_BADGE = "a[href*='/cart'] [data-cart-count], a[href*='/cart'] .cart-count, a[href*='/cart'] span"
+    PRODUCT_NAME = ".product-information h2"
+    PRODUCT_PRICE = ".product-information span span"
 
     # ---------------------------------------------------------------- navigation
     def open_url(self, url: str) -> "ProductPage":
+        """Navigate to a fully-qualified PDP URL."""
         self.open(url)
         try:
-            self.page.wait_for_load_state("networkidle", timeout=8000)
+            self.page.locator(self.PRODUCT_NAME).first.wait_for(
+                state="visible", timeout=8_000
+            )
         except PlaywrightTimeout:
-            pass
+            self.log.warning(f"PDP heading did not appear within 8s for {url}")
         return self
 
     # ------------------------------------------------------------------ variants
     def has_size_picker(self) -> bool:
-        for selector in self.SIZE_OPTION_CANDIDATES:
-            try:
-                if self.page.locator(selector).count() > 0:
-                    return True
-            except PlaywrightTimeout:
-                continue
+        """automationexercise.com PDPs have no size/colour selector."""
         return False
 
     def select_random_in_stock_size(self) -> str | None:
-        """Pick a random size whose radio is enabled. Returns the size value or None."""
-        radios = self._size_radios()
-        if not radios:
-            self.log.info("No size picker on this PDP - assuming single variant.")
-            return None
-
-        values: list[str] = []
-        in_stock: list[bool] = []
-        for radio in radios:
-            try:
-                value = radio.get_attribute("value") or ""
-                disabled = (radio.get_attribute("disabled") is not None) or (
-                    (radio.get_attribute("aria-disabled") or "").lower() == "true"
-                )
-                values.append(value)
-                in_stock.append(not disabled)
-            except PlaywrightTimeout:
-                continue
-
-        chosen = pick_random_in_stock(values, in_stock=in_stock)
-        if chosen is None:
-            self.log.warning("No in-stock sizes available")
-            return None
-
-        for radio in radios:
-            try:
-                if (radio.get_attribute("value") or "") == chosen:
-                    radio_id = radio.get_attribute("id")
-                    if radio_id:
-                        label = self.page.locator(f"label[for='{radio_id}']").first
-                        if label.is_visible(timeout=1500):
-                            label.click()
-                            self.log.info(f"Selected size: {chosen}")
-                            return chosen
-                    radio.check(force=True)
-                    self.log.info(f"Selected size: {chosen}")
-                    return chosen
-            except PlaywrightTimeout:
-                continue
+        """No-op for parity with multi-variant storefronts."""
         return None
-
-    def _size_radios(self) -> list:
-        for selector in self.SIZE_OPTION_CANDIDATES:
-            try:
-                locator = self.page.locator(selector)
-                count = locator.count()
-                if count > 0:
-                    return [locator.nth(i) for i in range(count)]
-            except PlaywrightTimeout:
-                continue
-        return []
 
     # ---------------------------------------------------------------- add to cart
     def add_to_cart(self) -> bool:
-        """Click Add-to-cart. Return True if the click landed on an enabled button."""
+        """Click ``Add to cart`` and dismiss the confirmation modal."""
         for selector in self.ADD_TO_CART_CANDIDATES:
             try:
                 btn = self.page.locator(selector).first
                 if not btn.is_visible(timeout=2000):
                     continue
-                if btn.is_disabled():
-                    self.log.warning(f"Add-to-cart disabled (selector={selector})")
-                    return False
+                btn.scroll_into_view_if_needed()
                 btn.click()
                 self.log.info("Clicked Add-to-cart")
+                self._wait_for_post_add_modal()
                 self._dismiss_post_add_dialog()
                 return True
             except PlaywrightTimeout:
@@ -134,7 +80,17 @@ class ProductPage(BasePage):
         self.log.error("Add-to-cart button not found on this PDP")
         return False
 
+    def _wait_for_post_add_modal(self) -> None:
+        """Wait briefly for the confirmation modal so the next click lands."""
+        try:
+            self.page.locator(self.POST_ADD_MODAL).first.wait_for(
+                state="visible", timeout=4_000
+            )
+        except PlaywrightTimeout:
+            self.log.warning("Post-add modal did not appear within 4s")
+
     def _dismiss_post_add_dialog(self) -> None:
+        """Close the cart modal so subsequent navigation isn't blocked."""
         for selector in self.POST_ADD_DIALOG_CLOSE:
             try:
                 btn = self.page.locator(selector).first
@@ -143,3 +99,8 @@ class ProductPage(BasePage):
                     return
             except PlaywrightTimeout:
                 continue
+        # As a last resort, press Escape - covers any rare modal variant.
+        try:
+            self.page.keyboard.press("Escape")
+        except Exception:  # noqa: BLE001
+            pass

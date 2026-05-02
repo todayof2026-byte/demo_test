@@ -26,13 +26,20 @@ _log = get_logger("cart_flow")
 def add_items_to_cart(page: "Page", urls: list[str]) -> int:
     """Open each URL, pick a random in-stock variant if needed, add to cart.
 
-    Returns the number of items that were successfully added. The caller can
-    decide whether a partial success counts as a pass; the brief is silent on
-    that, so we surface the number rather than raising.
+    The brief (section 4.2) requires returning to the search screen between
+    adds, so callers can keep the search tab as the "home base". We do that
+    via :meth:`Page.go_back` rather than hard-navigating back to
+    ``/products?search=...``: ``go_back`` reliably restores the result list
+    that produced ``urls`` even if the search query is rebuilt at runtime,
+    and it's a cheap operation (no extra network request when the page is
+    cached). If go_back fails (e.g. first iteration), we silently move on -
+    the next ``open_url`` is destination-correct regardless.
+
+    Returns the number of items that were successfully added. Partial success
+    is surfaced as the return value rather than raised, because the brief is
+    silent on the all-or-nothing question and the caller has more context
+    to decide pass/fail.
     """
-    # Wrap with a dynamic-title step so we can show the count - decorator-based
-    # @allure.step templates can only reference real function parameters, and
-    # `len(urls)` is a derived value that fails KeyError at decoration time.
     with allure.step(f"Add {len(urls)} item(s) to cart"):
         added = 0
         for index, url in enumerate(urls, start=1):
@@ -43,6 +50,7 @@ def add_items_to_cart(page: "Page", urls: list[str]) -> int:
                     if size is None:
                         _log.warning(f"  - skip (no in-stock sizes): {url}")
                         pdp.screenshot(f"skipped_no_stock_{index}")
+                        _return_to_search(page)
                         continue
                 ok = pdp.add_to_cart()
                 pdp.screenshot(f"add_to_cart_{index}")
@@ -51,8 +59,23 @@ def add_items_to_cart(page: "Page", urls: list[str]) -> int:
                     added += 1
                 else:
                     _log.warning(f"  - add-to-cart failed: {url}")
+                _return_to_search(page)
         _log.info(f"add_items_to_cart: {added}/{len(urls)} succeeded")
         return added
+
+
+def _return_to_search(page: "Page") -> None:
+    """Navigate back to the search/results screen between cart additions.
+
+    Brief 4.2 step 4: "Return to the search screen / search tab". We use
+    ``page.go_back`` because it's the closest analogue to a real shopper
+    pressing the browser Back button after adding an item, and it
+    sidesteps any need to remember the original search URL.
+    """
+    try:
+        page.go_back(wait_until="domcontentloaded", timeout=4_000)
+    except Exception as exc:  # noqa: BLE001 - non-fatal navigation hiccup
+        _log.debug(f"go_back skipped: {type(exc).__name__}: {exc}")
 
 
 # Pytest detects functions whose names start with ``assert_`` for rewriting in

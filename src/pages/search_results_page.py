@@ -1,16 +1,25 @@
-"""Search results page POM.
+"""Search results / Products page POM for automationexercise.com.
 
-Responsibilities:
-* Apply the price filter (delegated to :class:`PriceFilter`).
-* Detect pagination (delegated to :class:`Paginator`).
-* Iterate visible product cards and turn them into :class:`ProductCard`
-  data objects via XPath. The brief mandates XPath here, so the collection
-  XPath is the only XPath in the project.
+The site has only ONE listing page for both browse and search:
+``/products``. Submitting the search form updates the same page in place
+(``Searched Products`` heading appears) - there is no dedicated
+``/search?q=..`` URL.
+
+Constraints we work with
+------------------------
+* **No UI price filter** - the page exposes none, so :meth:`apply_max_price`
+  is a no-op and the search flow filters client-side via the price parsed
+  off each :class:`ProductCard`.
+* **No real pagination on search results** - the search shows all matches
+  on one page. The :class:`Paginator` therefore reports ``has_next() ==
+  False`` after the first page, which the search flow handles correctly.
+* **XPath-mandated card collection** - the brief explicitly requires XPath
+  for collecting the result tiles, so :data:`PRODUCT_CARD_XPATH` is the
+  one place in the project where we deliberately use XPath instead of
+  CSS / role selectors.
 """
 
 from __future__ import annotations
-
-from urllib.parse import quote_plus
 
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 
@@ -20,22 +29,33 @@ from src.utils import PriceParser
 
 
 class SearchResultsPage(BasePage):
-    """Wraps ``/search?q=...``."""
+    """Wraps ``/products`` (browse) and ``/products`` after a search submit."""
 
-    # Brief mandate: collect items via XPath. We keep the XPath broad enough
-    # to match Shopify's two common card structures (anchor-wrapped & section).
+    URL_PATH = "/products"
+
+    SEARCH_INPUT = "#search_product"
+    SEARCH_SUBMIT = "#submit_search"
+    SEARCHED_HEADING = "h2.title:has-text('Searched Products')"
+    FEATURES_HEADING = "h2.title:has-text('Features Items')"
+
+    # --- XPath: brief-mandated for card collection. -----------------------
+    # Matches every ``.col-sm-4`` tile inside ``.features_items`` that has
+    # a working product-detail link. Using XPath here (and only here) keeps
+    # the brief satisfied without polluting the rest of the project.
     PRODUCT_CARD_XPATH = (
-        "//*[self::li or self::article or self::div]"
-        "[.//a[contains(@href,'/products/')]]"
-        "[.//*[contains(translate(text(),'$\u00a3\u20ac\u20aa','$$$$'),'$') or "
-        " contains(translate(text(),'$\u00a3\u20ac\u20aa','$$$$'),'\u00a3') or "
-        " contains(@class,'price') or @data-price]]"
+        "//div[contains(@class,'features_items')]"
+        "//div[contains(@class,'col-sm-4') and "
+        ".//a[contains(@href,'/product_details/')]]"
     )
 
-    PRODUCT_LINK_XPATH = ".//a[contains(@href,'/products/')]"
-    PRICE_TEXT_XPATH = ".//*[contains(@class,'price') or contains(@class,'Price')]"
+    PRODUCT_LINK_XPATH = ".//a[contains(@href,'/product_details/')]"
+    PRICE_TEXT_XPATH = ".//div[contains(@class,'productinfo')]/h2"
+    TITLE_XPATH = ".//div[contains(@class,'productinfo')]/p"
+
+    # automationexercise.com doesn't render an explicit "Sold out" indicator
+    # on the listing - every product is purchasable - but we keep the hook
+    # so the ProductCard contract stays consistent with other storefronts.
     SOLD_OUT_XPATH = ".//*[contains(translate(., 'SOLDOUT', 'soldout'),'sold out')]"
-    TITLE_XPATH = ".//h2 | .//h3 | .//*[contains(@class,'title') or contains(@class,'Title')]"
 
     def __init__(self, page) -> None:  # noqa: ANN001
         super().__init__(page)
@@ -45,17 +65,37 @@ class SearchResultsPage(BasePage):
 
     # ------------------------------------------------------------------ navigation
     def open_for_query(self, query: str) -> "SearchResultsPage":
-        """Navigate directly to the search URL for ``query``."""
-        self.open(f"/search?q={quote_plus(query)}")
+        """Open ``/products`` then submit the search form for ``query``."""
+        self.open(self.URL_PATH)
         try:
-            self.page.wait_for_load_state("networkidle", timeout=10_000)
+            self.page.locator(self.SEARCH_INPUT).first.fill(query)
+            self.page.locator(self.SEARCH_SUBMIT).first.click()
         except PlaywrightTimeout:
-            pass
+            self.log.warning("Search form not found - falling back to /products")
+        try:
+            self.page.locator(self.SEARCHED_HEADING).first.wait_for(
+                state="visible", timeout=5_000
+            )
+        except PlaywrightTimeout:
+            self.log.info(
+                "'Searched Products' heading not visible - the query may have "
+                "yielded zero results, which is a valid outcome."
+            )
         return self
 
     # ---------------------------------------------------------------- filtering
     def apply_max_price(self, max_price: float) -> bool:
-        return self.filter.apply(min_price=0, max_price=max_price)
+        """No-op on this site: there is no UI price filter.
+
+        Documented as a no-op (rather than raising) so the search flow's
+        decision tree stays linear: it checks the return value, falls
+        through to client-side filtering when ``False``.
+        """
+        self.log.info(
+            "automationexercise.com has no UI price filter; applying "
+            f"max_price={max_price} client-side via ProductCard."
+        )
+        return False
 
     # ---------------------------------------------------------------- collection
     def collect_cards(self) -> list[ProductCard]:
@@ -73,12 +113,12 @@ class SearchResultsPage(BasePage):
         for i in range(count):
             element = elements.nth(i)
             try:
-                href = element.locator(f"xpath={self.PRODUCT_LINK_XPATH}").first.get_attribute(
-                    "href", timeout=2000
-                )
+                href = element.locator(
+                    f"xpath={self.PRODUCT_LINK_XPATH}"
+                ).first.get_attribute("href", timeout=2000)
             except PlaywrightTimeout:
                 continue
-            if not href or "/products/" not in href:
+            if not href or "/product_details/" not in href:
                 continue
 
             url = self._absolute_url(href)
@@ -106,8 +146,9 @@ class SearchResultsPage(BasePage):
     # ---------------------------------------------------------------- helpers
     def _absolute_url(self, href: str) -> str:
         if href.startswith("http"):
-            return href.split("?")[0] if "?" not in href else href
-        return f"{self.settings.base_url}{href}"
+            return href.split("?")[0] if "?" in href else href
+        base = self.settings.base_url.rstrip("/")
+        return f"{base}{href}"
 
     def _safe_inner_text(self, element, xpath: str) -> str:  # noqa: ANN001
         try:

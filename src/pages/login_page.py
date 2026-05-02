@@ -60,15 +60,39 @@ class LoginPage(BasePage):
         return self
 
     def submit(self) -> "LoginPage":
-        """Click the submit button and wait for the result (success nav OR error)."""
+        """Click the submit button and wait for either auth-success OR error.
+
+        Why we don't use ``networkidle``: automationexercise.com loads ads /
+        analytics scripts asynchronously, so the network never actually goes
+        idle - waiting on it would burn the full 10s timeout every submit
+        even on a successful login. Instead we race two outcomes:
+
+        * the ``Logged in as ...`` marker appears -> success path
+        * the ``incorrect`` error <p> appears      -> rejection path
+
+        Whichever fires first means the form has been processed by the
+        server. Falls back to ``domcontentloaded`` if neither shows up
+        (defensive - shouldn't happen on this site).
+        """
         self.page.locator(self.SUBMIT_BUTTON).click()
-        # Either the URL changes (success: redirect to /) or an error <p> appears.
-        # We wait for the first of those to settle the network so callers get a
-        # consistent post-state. ``networkidle`` is bounded so it never hangs.
+        outcome_selector = (
+            f"{self.LOGGED_IN_MARKER}, "
+            f"{self.ERROR_MESSAGE}, "
+            f"{self.ERROR_MESSAGE_TEXT_FALLBACK}"
+        )
         try:
-            self.page.wait_for_load_state("networkidle", timeout=10_000)
+            self.page.locator(outcome_selector).first.wait_for(
+                state="visible", timeout=8_000
+            )
         except PlaywrightTimeout:
-            pass
+            self.log.warning(
+                "Neither auth marker nor error appeared within 8s; "
+                "falling back to domcontentloaded."
+            )
+            try:
+                self.page.wait_for_load_state("domcontentloaded", timeout=3_000)
+            except PlaywrightTimeout:
+                pass
         return self
 
     def login(self, email: str, password: str) -> bool:

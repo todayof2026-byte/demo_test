@@ -190,19 +190,64 @@ python scripts\make_login_evidence.py
 
 ## Running the tests
 
+The suite has three test files, all derived from sections 4.1-4.3 of the brief:
+
+| File | Brief section | What it covers |
+| --- | --- | --- |
+| `tests/test_login.py`              | 4 (Authentication)        | Negative-then-positive recovery in a single browser window |
+| `tests/test_e2e_purchase_flow.py`  | 4.1 + 4.2 + 4.3 chained   | Login -> search "tshirt" <= Rs.1500 -> add 5 -> assert subtotal |
+| `tests/test_search_data_driven.py` | 4.1 (data-driven variants)| Login + 3 YAML-driven search scenarios (happy / tight budget / empty) |
+
+Every browser test uses the `logged_in_page` fixture, which performs a real
+login through the UI before the test body runs. That makes each test
+**runnable standalone** - login is automatic, no manual setup required.
+
+### Recommended entry points (PowerShell)
+
 ```powershell
-pytest                                       # full suite, Allure results in reports/
-pytest tests/test_login.py -v                # login flow (positive + negative)
-pytest -k price_parser                       # unit tests, no browser
-pytest -m smoke                              # fast sanity only
-pytest -m "search and not e2e"               # data-driven search scenarios (skipped pending pivot)
-$env:HEADED="true"; pytest tests/test_login.py    # watch the browser
+# Full suite in brief order (login -> e2e -> data-driven):
+.\scripts\run-suite.ps1
+
+# Watch the suite run with a visible browser:
+.\scripts\run-suite.ps1 --headed=true
+$env:HEADED="true"; .\scripts\run-suite.ps1     # equivalent
+
+# Run any single file/test, with the LOGIN TEST prepended automatically.
+# Anything after -Target is forwarded verbatim to pytest:
+.\scripts\run-with-login.ps1 -Target tests/test_e2e_purchase_flow.py
+.\scripts\run-with-login.ps1 -Target tests/test_search_data_driven.py -k full_results_tshirt
+
+# Build / view the HTML report after a run:
+.\scripts\build-report.ps1     # rebuild reports/allure-html/index.html
+.\scripts\open-report.ps1      # serve the built report over HTTP (allure CLI)
+.\scripts\view-report.ps1      # interactive `allure serve` from raw results
 ```
 
-Useful flags:
+### Plain pytest invocations
+
+The wrapper scripts are just opinionated pytest one-liners; you can use
+pytest directly if you prefer:
+
+```powershell
+pytest                                              # full suite (alphabetical order)
+pytest tests/test_login.py -v                       # login standalone
+pytest tests/test_e2e_purchase_flow.py -v           # e2e standalone (login via fixture)
+pytest tests/test_search_data_driven.py -v          # data-driven standalone (login via fixture)
+$env:HEADED="true"; pytest tests/test_login.py      # watch the browser
+```
+
+> **Why the wrapper scripts?** pytest collects files alphabetically, so a
+> bare `pytest` runs `test_e2e_purchase_flow.py` BEFORE `test_login.py`.
+> The standalone tests still log in via the fixture, but the brief asks
+> for a recognisable login test at the top of every report - `run-suite.ps1`
+> and `run-with-login.ps1` enforce that order explicitly.
+
+Useful flags (passed via `-ExtraArgs` or directly to pytest):
 
 - `-n auto` runs tests in parallel via `pytest-xdist`.
 - `--reruns 1` retries flaky tests once via `pytest-rerunfailures`.
+- `--no-forced-exit` disables the post-session `os._exit` (debug only -
+  re-enables the slow Playwright session teardown).
 
 ## Reports & Evidence
 

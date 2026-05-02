@@ -79,14 +79,18 @@ class BasePage:
         """Best-effort dismissal of cookie consent and region modals.
 
         Never raises - if no overlay is present, this is a no-op.
-        Region modals on some sites mount asynchronously a few hundred ms
-        after page load, so we give them a longer visibility wait than cookies.
+
+        Per-selector budget is small (300ms) to keep the no-banner path fast:
+        on automationexercise.com nothing matches and we'd otherwise burn
+        ``len(selectors) * timeout_ms`` waiting for non-existent overlays.
+        Sites with slower-mounting modals can override ``dismiss_overlays``
+        on the page-object subclass.
         """
         self._click_first_visible(
-            self._COOKIE_ACCEPT_SELECTORS, label="cookie consent", timeout_ms=2500
+            self._COOKIE_ACCEPT_SELECTORS, label="cookie consent", timeout_ms=300
         )
         self._click_first_visible(
-            self._REGION_DISMISS_SELECTORS, label="region modal", timeout_ms=4000
+            self._REGION_DISMISS_SELECTORS, label="region modal", timeout_ms=300
         )
 
     def _click_first_visible(
