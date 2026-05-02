@@ -694,14 +694,7 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     """
     if session.config.getoption("--no-forced-exit"):
         return
-    # Give pytest's own atexit handlers (terminal summary etc.) a moment to
-    # flush, then exit. ``sys.stdout/stderr.flush()`` is belt-and-braces.
-    try:
-        sys.stdout.flush()
-        sys.stderr.flush()
-    except Exception:  # noqa: BLE001
-        pass
-    os._exit(exitstatus)
+    _force_terminate(exitstatus)
 
 
 # --------------------------------------------- post-last-test watchdog
@@ -722,33 +715,82 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
 # teardown for more than ``_WATCHDOG_GRACE_S`` seconds.
 _TESTS_REMAINING: dict[str, int] = {"count": 0}
 _SESSION_EXIT_CODE: dict[str, int] = {"code": 0}
-_WATCHDOG_GRACE_S = 15
+_PASSED_COUNT: dict[str, int] = {"n": 0}
+_FAILED_COUNT: dict[str, int] = {"n": 0}
+_SESSION_START: dict[str, float] = {"t": 0.0}
+_WATCHDOG_GRACE_S = 8
+
+
+def _force_terminate(exit_code: int = 0) -> None:
+    """Terminate the current process immediately, even from a daemon thread.
+
+    On Windows, ``os._exit`` from a daemon thread can be silently ignored
+    when the main thread is stuck inside a native C call (Playwright's
+    greenlet/asyncio event loop). We use the Win32 ``TerminateProcess``
+    API via ctypes — it is unconditional and works from any thread.
+    """
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except Exception:  # noqa: BLE001
+        pass
+    if sys.platform == "win32":
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        handle = kernel32.GetCurrentProcess()
+        kernel32.TerminateProcess(handle, exit_code)
+    os._exit(exit_code)
 
 
 def pytest_collection_modifyitems(session, config, items) -> None:  # noqa: ANN001
     _TESTS_REMAINING["count"] = len(items)
+    _SESSION_START["t"] = time.time()
 
 
 @pytest.hookimpl(trylast=True)
 def pytest_runtest_logreport(report) -> None:  # noqa: ANN001
-    """Track whether any test has failed so the watchdog can exit with the right code."""
-    if report.when == "call" and report.failed:
-        _SESSION_EXIT_CODE["code"] = 1
+    """Track pass/fail counts so the watchdog can print a summary."""
+    if report.when == "call":
+        if report.passed:
+            _PASSED_COUNT["n"] += 1
+        elif report.failed:
+            _FAILED_COUNT["n"] += 1
+            _SESSION_EXIT_CODE["code"] = 1
 
 
 def pytest_runtest_logfinish(nodeid, location) -> None:  # noqa: ANN001
-    """When the last test reports back, arm an os._exit watchdog timer."""
+    """After the last test finishes, print a summary and arm a fast kill timer.
+
+    pytest's own terminal summary ("5 passed in 42.3s") is printed AFTER
+    session-scoped fixture teardown, which is where Playwright hangs for
+    minutes. We print our own one-liner here (before teardown) so the user
+    always sees the result, then arm a watchdog that ``TerminateProcess``es
+    after ``_WATCHDOG_GRACE_S`` seconds — just enough for Allure to flush
+    its last JSON files, but not enough for Playwright teardown to hang.
+    """
     _TESTS_REMAINING["count"] -= 1
     if _TESTS_REMAINING["count"] > 0:
         return
 
+    elapsed = time.time() - _SESSION_START["t"]
+    p, f = _PASSED_COUNT["n"], _FAILED_COUNT["n"]
+    total = p + f
+    color = "\033[32m" if f == 0 else "\033[31m"
+    reset = "\033[0m"
+    line = (
+        f"\n{color}===== {p} passed"
+        + (f", {f} failed" if f else "")
+        + f" in {elapsed:.1f}s ====={reset}\n"
+    )
+    try:
+        sys.stdout.write(line)
+        sys.stdout.flush()
+    except Exception:  # noqa: BLE001
+        pass
+
     def _watchdog() -> None:
         time.sleep(_WATCHDOG_GRACE_S)
-        try:
-            sys.stdout.flush()
-            sys.stderr.flush()
-        except Exception:  # noqa: BLE001
-            pass
-        os._exit(_SESSION_EXIT_CODE["code"])
+        _force_terminate(_SESSION_EXIT_CODE["code"])
 
     threading.Thread(target=_watchdog, daemon=True, name="pytest-exit-watchdog").start()

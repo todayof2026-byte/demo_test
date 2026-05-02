@@ -4,18 +4,24 @@ End-to-end automation framework targeting
 [automationexercise.com](https://www.automationexercise.com).
 Implements the four functions required by the exercise brief
 (`login`, `search_items_by_name_under_price`, `add_items_to_cart`,
-`assert_cart_total_not_exceeds`) over a clean Page Object Model with
-typed configuration, YAML-driven inputs, and Allure reporting.
+`assert_cart_total_not_exceeds`) plus a checkout-summary verification,
+over a clean Page Object Model with typed configuration, YAML-driven
+inputs, and Allure reporting.
 
-> **Status:** the **login** flow is fully ported and covered by
-> [`tests/test_login.py`](tests/test_login.py) (positive + negative
-> data-driven cases). The search / add-to-cart / cart-subtotal flows are
-> still being pivoted from the previous target site - the relevant tests
-> are explicitly skipped with a reason until that work lands. See
-> [Status & roadmap](#status--roadmap).
+> **Status:** all five tests pass on `main`. The full brief
+> (sections 4.1–4.3) is covered including the checkout page.
 
 > The full exercise brief in English is available as a one-page dashboard:
 > [`exercise-brief.html`](exercise-brief.html).
+
+> The AI bug-hunting exercise (section 5) is documented in
+> [`ReadMeAIBugs.md`](ReadMeAIBugs.md) /
+> [`ReadMeAIBugs.html`](ReadMeAIBugs.html).
+
+> A per-test assertion reference is available in
+> [`test-assertions.md`](test-assertions.md) /
+> [`test-assertions.html`](test-assertions.html) — **32 assertions**
+> across all tests.
 
 ## Table of contents
 
@@ -58,14 +64,13 @@ toggle `HEADED=true` for a visible browser).
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `PROFILE` | `default` | Storefront profile (`default` -> automationexercise.com). Add new profiles in [`src/config/settings.py`](src/config/settings.py). |
-| `SITE_EMAIL` | _empty_ | Login email. If empty, login tests run as guest / are skipped. |
+| `PROFILE` | `default` | Storefront profile (`default` -> automationexercise.com). |
+| `SITE_EMAIL` | _empty_ | Login email. If empty, login tests are skipped. |
 | `SITE_PASSWORD` | _empty_ | Login password. Stored as `SecretStr` so it never appears in logs. |
 | `HEADED` | `false` | `true` to run the browser in headed mode. |
 | `SLOW_MO` | `0` | Slow each Playwright action by N ms (debugging). |
 | `ACTION_TIMEOUT_MS` | `15000` | Default per-action timeout. |
 | `NAVIGATION_TIMEOUT_MS` | `30000` | Default navigation timeout. |
-| `TRACE_MODE` | `retain-on-failure` | Playwright trace policy: `on`, `off`, `retain-on-failure`, `on-first-retry`. |
 
 The `.env` file is gitignored. The committed template lives in [`.env.example`](.env.example).
 
@@ -76,12 +81,6 @@ credentials. The login user and password are committed to the repo
 **encrypted** (with [SOPS][sops] + [age][age]); the plaintext `.env` never
 leaves the machine that produced it.
 
-> **Note on the credentials themselves:** the account in this repo is a
-> dedicated, throwaway test account created specifically for this exercise
-> on automationexercise.com. The point is to demonstrate the *pattern*
-> (encrypted-at-rest secrets, allow-listed scanners, sanitised evidence
-> artefacts) rather than to protect a high-value secret.
-
 ### Files involved
 
 | File | Purpose | Committed? |
@@ -90,117 +89,41 @@ leaves the machine that produced it.
 | `.env` | Local plaintext credentials. **Never commit.** | **No** (gitignored) |
 | [`.sops.yaml`](.sops.yaml) | SOPS policy: which age public keys may decrypt. | Yes |
 | `secrets/credentials.sops.yaml` | The encrypted ciphertext. Safe to commit. | Yes (after encryption) |
-| `~/.config/sops/age/keys.txt` | Your private age key. **Never commit.** | **No** (lives in user profile) |
 
 ### One-time setup (per machine)
 
-The bootstrap script installs sops + age via `winget`, generates an age
-keypair if one doesn't exist, and prints the **public** half so you can
-paste it into `.sops.yaml`:
-
 ```powershell
-.\scripts\setup-secrets.ps1
+.\scripts\setup-secrets.ps1      # installs sops + age, generates keypair
+.\scripts\encrypt-env.ps1        # .env -> secrets/credentials.sops.yaml
+.\scripts\decrypt-env.ps1        # reverse: sops -> .env on a fresh checkout
 ```
-
-After that, edit `.sops.yaml` and replace the `age:` placeholder with the
-public key the script printed. (Yes, the public key is safe to commit.)
-
-### Encrypt your credentials
-
-1. Edit `.env` with real credentials (`SITE_EMAIL`, `SITE_PASSWORD`).
-2. Run:
-
-   ```powershell
-   .\scripts\encrypt-env.ps1
-   ```
-
-3. This produces `secrets/credentials.sops.yaml`. Commit it.
-4. The plaintext `.env` is gitignored and stays on your machine.
-
-### Decrypt on a fresh checkout (your second machine, or a teammate)
-
-1. Install sops + age (`scripts\setup-secrets.ps1` does this).
-2. Place your **private** age key at `%USERPROFILE%\.config\sops\age\keys.txt`.
-3. Run:
-
-   ```powershell
-   .\scripts\decrypt-env.ps1
-   ```
-
-4. `.env` is recreated locally; `pytest` works as usual.
-
-### Granting the reviewer decryption access
-
-Two options, in order of preference:
-
-1. **Add the reviewer's age public key to `.sops.yaml`**, then re-encrypt
-   with `sops updatekeys secrets/credentials.sops.yaml`. They generate
-   their own keypair locally and send you the public half. **Their private
-   key never leaves their machine, your private key never leaves yours.**
-   This is the model used at Mozilla, CNCF, etc. - it's the right answer
-   for production teams.
-2. **Share your private age key out-of-band** - one-time-secret links
-   ([onetimesecret.com][ots], [pwpush.com][pwpush]), Signal disappearing
-   messages, or a 1Password / Bitwarden shared item with link expiry. This
-   is acceptable for a graded throwaway account but **never** for a
-   shared production secret.
-
-If the reviewer prefers to inspect the framework without handling
-credentials, they can rely on the [login evidence bundle](#login-evidence)
-described below.
 
 ### Pre-commit secret scanning
 
-A [`.pre-commit-config.yaml`](.pre-commit-config.yaml) wires up
-[`gitleaks`][gitleaks] alongside the standard hygiene hooks (large-file,
-private-key detection, YAML/JSON validation, `ruff`, `black`). The
-[`.gitleaks.toml`](.gitleaks.toml) ruleset allow-lists the SOPS-encrypted
-file and example templates so they don't trip the scanner.
+[`gitleaks`][gitleaks] is wired via `.pre-commit-config.yaml`:
 
 ```powershell
 pip install pre-commit
-pre-commit install                # runs on every commit going forward
-pre-commit run --all-files        # one-off scan of the whole tree
-```
-
-### Login evidence
-
-If the reviewer prefers to inspect the framework without handling
-credentials, [`scripts/make_login_evidence.py`](scripts/make_login_evidence.py)
-runs the login flow once against the live site and writes a sanitised
-artefact bundle to `reports/login-evidence/`:
-
-- A full-page screenshot of the post-login state.
-- An `evidence.json` capturing timestamp, profile, redacted identity,
-  and success flag.
-- A `README.md` explaining how the bundle was produced.
-
-The reviewer can browse the bundle, read the flow code, and accept that
-as proof of correctness without needing to run the login themselves.
-
-```powershell
-python scripts\make_login_evidence.py
+pre-commit install
+pre-commit run --all-files
 ```
 
 [sops]: https://github.com/getsops/sops
 [age]: https://github.com/FiloSottile/age
 [gitleaks]: https://github.com/gitleaks/gitleaks
-[ots]: https://onetimesecret.com
-[pwpush]: https://pwpush.com
 
 ## Running the tests
 
-The suite has three test files, all derived from sections 4.1-4.3 of the brief:
+### Test suite overview
 
-| File | Brief section | What it covers |
-| --- | --- | --- |
-| `tests/test_login.py`              | 4 (Authentication)        | Negative-then-positive recovery in a single browser window |
-| `tests/test_e2e_purchase_flow.py`  | 4.1 + 4.2 + 4.3 chained   | Login -> search "tshirt" <= Rs.1500 -> add 5 -> assert subtotal |
-| `tests/test_search_data_driven.py` | 4.1 (data-driven variants)| Login + 3 YAML-driven search scenarios (happy / tight budget / empty) |
+| File | Brief section | Assertions | What it covers |
+| --- | --- | --- | --- |
+| `tests/test_login.py` | 4 (Auth) | 6 | Negative-then-positive login recovery in one browser window |
+| `tests/test_e2e_purchase_flow.py` | 4.1 + 4.2 + 4.3 | 14 | Clear cart → search → add items → assert cart total → checkout summary (8 checkout assertions) |
+| `tests/test_search_data_driven.py` | 4.1 (×3 scenarios) | 4 per scenario | Data-driven search: happy path / tight budget / empty result |
 
-Every browser test uses the `logged_in_page` fixture, which performs a real
-login through the UI before the test body runs. That makes each test
-**runnable standalone** - login is automatic, no manual setup required.
+**Total: 32 assertions** across 5 test cases (3 data-driven scenarios count as 3 tests).
+See [`test-assertions.md`](test-assertions.md) for the full per-assertion breakdown.
 
 ### Recommended entry points (PowerShell)
 
@@ -210,108 +133,97 @@ login through the UI before the test body runs. That makes each test
 
 # Watch the suite run with a visible browser:
 .\scripts\run-suite.ps1 --headed=true
-$env:HEADED="true"; .\scripts\run-suite.ps1     # equivalent
 
-# Run any single file/test, with the LOGIN TEST prepended automatically.
-# Anything after -Target is forwarded verbatim to pytest:
+# Run a single test with login prepended automatically:
 .\scripts\run-with-login.ps1 -Target tests/test_e2e_purchase_flow.py
-.\scripts\run-with-login.ps1 -Target tests/test_search_data_driven.py -k full_results_tshirt
+
+# Clear all reports (for a clean single-run deliverable):
+.\clear-reports.ps1
 
 # Build / view the HTML report after a run:
-.\scripts\build-report.ps1     # rebuild reports/allure-html/index.html
-.\scripts\open-report.ps1      # serve the built report over HTTP (allure CLI)
-.\scripts\view-report.ps1      # interactive `allure serve` from raw results
+.\scripts\build-report.ps1     # generate reports/allure-html/
+.\scripts\open-report.ps1      # serve over HTTP (http://127.0.0.1:3181)
+.\scripts\view-report.ps1      # interactive allure serve
 ```
+
+> `run-suite.ps1` automatically kills stale browser processes before
+> starting, auto-builds the Allure HTML report when done, and pauses
+> the shell so you can see the results.
 
 ### Plain pytest invocations
 
-The wrapper scripts are just opinionated pytest one-liners; you can use
-pytest directly if you prefer:
-
 ```powershell
-pytest                                              # full suite (alphabetical order)
+pytest                                              # full suite
 pytest tests/test_login.py -v                       # login standalone
-pytest tests/test_e2e_purchase_flow.py -v           # e2e standalone (login via fixture)
-pytest tests/test_search_data_driven.py -v          # data-driven standalone (login via fixture)
+pytest tests/test_e2e_purchase_flow.py -v           # e2e standalone
+pytest tests/test_search_data_driven.py -v          # data-driven standalone
 $env:HEADED="true"; pytest tests/test_login.py      # watch the browser
 ```
 
-> **Why the wrapper scripts?** pytest collects files alphabetically, so a
-> bare `pytest` runs `test_e2e_purchase_flow.py` BEFORE `test_login.py`.
-> The standalone tests still log in via the fixture, but the brief asks
-> for a recognisable login test at the top of every report - `run-suite.ps1`
-> and `run-with-login.ps1` enforce that order explicitly.
+### Fail-fast & timeouts
 
-Useful flags (passed via `-ExtraArgs` or directly to pytest):
-
-- `-n auto` runs tests in parallel via `pytest-xdist`.
-- `--reruns 1` retries flaky tests once via `pytest-rerunfailures`.
-- `--no-forced-exit` disables the post-session `os._exit` (debug only -
-  re-enables the slow Playwright session teardown).
+- `--maxfail=3` is configured in `pytest.ini` — the suite stops after 3 failures.
+- A **watchdog timer** fires 8 seconds after the last test completes and
+  force-terminates the process. This prevents Playwright's session-scoped
+  teardown from hanging for minutes on Windows (a known issue with
+  Chromium driver shutdown on Python 3.13). All reports are written
+  before the watchdog fires.
 
 ## Reports & Evidence
 
-Every test run produces a multi-format evidence bundle so the reviewer
-never has to ask "what actually happened in that run?". The capture
-is **always-on** (pass or fail) so a green run still has the same
-evidence as a failure.
+Every test run produces a multi-format evidence bundle. Capture is
+**always-on** (pass or fail) so a green run has the same evidence as a
+failure.
 
 ### What is captured per test
 
-| Artefact | Content | Status |
-| --- | --- | --- |
-| Playwright **trace** (`.zip`) | Full DOM snapshots, network, console, screenshots-per-action - opens with `playwright show-trace`. | Wired (always-on) |
-| **Video recording** (`.webm`) | One video per test, recording the whole browser context end-to-end. Demonstrates the user journey at human speed. | Planned (fixtures in flight - see [`AGENTS.md`](AGENTS.md)) |
-| **Screenshots** (`.png`) | Every `BasePage.screenshot(name)` call lands in `screenshots/` and is attached to the matching Allure step. Numbered per-test (`01_login_page.png`, `02_login_rejected_with_error.png`, ...). | Wired (sequence numbering in flight) |
-| **Per-test log** (`log.txt`) | The `loguru` records emitted during exactly that test, captured via a per-test sink (`add_file_sink` in [`src/utils/logger.py`](src/utils/logger.py)). | Helper landed; per-test wiring in flight |
-| `summary.json` | `{test_id, outcome, duration_seconds, started_at, scenario}` - machine-readable test ledger. | Planned |
+| Artefact | Content |
+| --- | --- |
+| **Video recording** (`.webm`) | One video per test, recording the whole browser context end-to-end at 1280×720. Every test has a video — pass or fail. |
+| **Playwright trace** (`.zip`) | Full DOM snapshots, network, console. Open with `playwright show-trace <path>`. |
+| **Screenshots** (`.png`) | Every `BasePage.screenshot(name)` call, numbered per-test (`01_login_page.png`, `02_login_rejected.png`, ...). |
+| **Per-test log** (`log.txt`) | `loguru` records emitted during exactly that test. |
+| `summary.json` | `{test_id, outcome, duration_seconds, started_at}` — machine-readable test ledger. |
+
+### Allure report enhancements
+
+| Enhancement | What it gives you |
+| --- | --- |
+| `environment.properties` | "Environment" widget: site, browser, headed, Python/Playwright versions, run timestamp |
+| `categories.json` | "Categories" tab groups failures by root cause: selector drift, auth, network, cart, pop-up |
+| `@allure.severity` | BLOCKER (login), CRITICAL (e2e), NORMAL/MINOR (data-driven) |
+| `@allure.title` | Human-readable labels including parametrized values |
+| `@allure.tag` | Brief section tags (`brief-section-4-1`, etc.) for filtering |
 
 ### Where the evidence lives
 
 ```
 reports/
-+-- allure-results/                   raw Allure JSON (one file per result)
-+-- allure-html/                      static HTML report (built on demand)
-+-- evidence/
-|   \-- <test_id>/<timestamp>/
-|       +-- trace.zip
-|       +-- video.webm
-|       +-- log.txt
-|       +-- screenshots/
-|       \-- summary.json
-+-- junit.xml                         CI-consumer-friendly test summary
-\-- last_login_run.log                last pytest stdout (debug aid)
+├── allure-results/                raw Allure JSON (one file per result)
+├── allure-html/                   static HTML report (built on demand)
+├── evidence/
+│   └── <test_id>/<timestamp>/
+│       ├── trace.zip
+│       ├── video.webm
+│       ├── log.txt
+│       ├── screenshots/
+│       └── summary.json
+├── junit.xml                      CI-consumer-friendly test summary
+└── pytest.log                     full pytest log
 ```
 
-Everything in `reports/` is gitignored (it's evidence, not source).
-The folder layout means the reviewer can either:
-* Browse the HTML Allure report (recommended), OR
-* Open `reports/evidence/<test_id>/<timestamp>/` directly without
-  installing any tools - the same artefacts are there as flat files.
+Everything in `reports/` is gitignored.
 
-### Building the HTML report
+### Cleaning reports
 
 ```powershell
-# After a test run, build a self-contained HTML site you can zip & email:
-.\scripts\build-report.ps1
-Start-Process reports\allure-html\index.html
-
-# OR live-view (auto-opens browser, auto-reloads):
-.\scripts\view-report.ps1
+.\clear-reports.ps1                # wipe everything (171 MB+ after a full run)
+.\clear-reports.ps1 -DryRun       # show what would go without deleting
+.\clear-reports.ps1 -KeepStorageState  # keep cached login session
 ```
 
-Each Allure test result shows: test name, parametrize id, total duration,
-each Allure step (with its own duration), and every attached artefact
-inline (logs, screenshots, video, trace).
-
-### Login-flow specific evidence
-
-The combined login test [`tests/test_login.py`](tests/test_login.py) drives
-the full **negative-then-positive recovery flow in a single browser
-window** - so the resulting video shows: form rendered -> wrong creds
-typed -> red error appears -> fields cleared -> real creds typed ->
-header shows `Logged in as <username>`. One scenario, one watchable
-recording, all the rubric points.
+The script also kills stale browser/pytest processes that may be holding
+file handles open.
 
 ## Architecture
 
@@ -327,126 +239,110 @@ src/config/    pydantic-settings + site profiles
 data/          YAML inputs for parameterized tests
 ```
 
-Hard-line rules enforced via [`.cursor/rules/*.mdc`](.cursor/rules/) and documented in [`AGENTS.md`](AGENTS.md):
+Hard-line rules:
 
 - **`Decimal` for money**, never `float`. The `PriceParser` is the single source of truth.
 - **No `time.sleep`** in `src/`; only Playwright waits.
-- **No assertions** in pages or components - assertions belong to tests/flows.
-- **No cross-page imports** - cross-page orchestration happens in `src/flows/`.
-- **Locator priority**: role -> data-testid -> text -> CSS attr -> XPath. The brief mandates XPath for `SearchResultsPage.PRODUCT_CARD_XPATH` only.
-- **Credentials** never live in code - only in `.env`.
+- **No assertions** in pages or components — assertions belong to tests/flows.
+- **No cross-page imports** — cross-page orchestration happens in `src/flows/`.
+- **Locator priority**: role → data-testid → text → CSS attr → XPath. The brief mandates XPath for `SearchResultsPage.PRODUCT_CARD_XPATH` only.
+- **Credentials** never live in code — only in `.env`.
+
+### Page Object Model
+
+| Page | URL | Purpose |
+| --- | --- | --- |
+| `LoginPage` | `/login` | Fill credentials, submit, read error/success |
+| `SearchResultsPage` | `/products` | Submit search, collect cards via XPath, client-side price filter |
+| `ProductPage` | `/product_details/<id>` | Add to cart, dismiss confirmation modal |
+| `CartPage` | `/view_cart` | Sum per-line totals, delete items, proceed to checkout |
+| `CheckoutPage` | `/checkout` | Verify "Review Your Order" summary, addresses, Place Order button |
+| `HomePage` | `/` | Navigation entry point |
 
 ## Data-driven scenarios
 
-Two YAML files drive parameterised tests today:
+Test scenarios are loaded from [`data/queries.yaml`](data/queries.yaml):
 
-| File | Drives | Status |
-| --- | --- | --- |
-| [`data/login.yaml`](data/login.yaml) | `tests/test_login.py` (positive + negative login) | **Active** |
-| [`data/queries.yaml`](data/queries.yaml) | `tests/test_search_data_driven.py` (search + price filter) | Skipped (pending search pivot) |
+| Scenario | Query | Max Price | Limit | Expected |
+| --- | --- | --- | --- | --- |
+| `full_results_tshirt` | `tshirt` | Rs. 1500 | 5 | Several matches |
+| `tight_budget_dress` | `dress` | Rs. 600 | 5 | Fewer matches (tight filter) |
+| `empty_ok_nonsense` | `asdfqwerty12345nope` | Rs. 100 | 5 | Zero results (valid per brief) |
 
-Each entry exercises a distinct code path. For login that means: env-driven
-positive case, wrong-password negative, and unknown-user negative (the
-last two assert the site's own error message). For search:
-`full_results_running_shoes`, `with_pagination_jacket`, and
-`empty_ok_nonsense` (empty result is valid per the brief).
-
-Real credentials are never written to `data/`; they live only in `.env`
-(gitignored) or in `secrets/credentials.sops.yaml` (SOPS-encrypted). Adding
-a scenario is one YAML entry; the parameterised tests pick them up
+Adding a scenario is one YAML entry; the parametrized tests pick them up
 automatically.
-
-## Status & roadmap
-
-| Brief function | File | Status |
-| --- | --- | --- |
-| `login` | [`src/flows/auth_flow.py`](src/flows/auth_flow.py) + [`src/pages/login_page.py`](src/pages/login_page.py) | **Done.** Covered by `tests/test_login.py` (3 data-driven scenarios). |
-| `search_items_by_name_under_price` | [`src/flows/search_flow.py`](src/flows/search_flow.py) | Selectors target the previous storefront. To port: rewrite `SearchResultsPage` for automationexercise.com's `/products` listing, then unskip `tests/test_search_data_driven.py`. |
-| `add_items_to_cart` | [`src/flows/cart_flow.py`](src/flows/cart_flow.py) | Pending. PDP and Add-to-Cart selectors need updating to the new site. |
-| `assert_cart_total_not_exceeds` | [`src/flows/cart_flow.py`](src/flows/cart_flow.py) | Pending. Cart subtotal selector needs updating. |
 
 ## AI-assisted workflow
 
-A small project-scoped AI tooling layer is committed to the repo to
-demonstrate effective AI usage and to make ongoing maintenance reproducible
-across reviewers:
+A project-scoped AI tooling layer is committed to the repo:
 
 | Artifact | What it does |
 | --- | --- |
 | [`.cursor/rules/*.mdc`](.cursor/rules/) | Five focused rule files auto-applied by Cursor based on file globs. |
 | [`.cursor/commands/`](.cursor/commands/) | Slash commands `/add-page-object`, `/add-test-case`, `/debug-failing-locator`. |
-| [`.cursor/mcp.json`](.cursor/mcp.json) | Project-scoped Playwright MCP (live browser) + Filesystem MCP (sandboxed to repo root). |
+| [`.cursor/mcp.json`](.cursor/mcp.json) | Project-scoped Playwright MCP (live browser) + Filesystem MCP. |
 | [`docs/personas/`](docs/personas/) | Three role personas: QA Architect, Test Engineer, Code Reviewer. |
-| [`AGENTS.md`](AGENTS.md) | Universal AI playbook (commands, conventions, common pitfalls). |
-| [`docs/ai-workflow.md`](docs/ai-workflow.md) | When to use which artifact, with concrete examples. |
+| [`AGENTS.md`](AGENTS.md) | Universal AI playbook. |
 
-Nothing here is required for the tests to run - they're augmentations.
-The MCP servers in `.cursor/mcp.json` are scoped to this project only;
-they do not affect global Cursor settings.
+Nothing here is required for the tests to run — they're augmentations.
 
 ## Assumptions and limitations
 
-- **Login**: live credentials per `.env`. The login tests in
-  [`tests/test_login.py`](tests/test_login.py) deliberately use a fresh
-  guest context each run so the assertion ("the login flow itself
-  authenticated the session") is meaningful. The session-scoped
-  `storage_state` fixture in [`tests/conftest.py`](tests/conftest.py)
-  authenticates once for the wider suite and caches `auth/storage_state.json`
-  (gitignored) for up to 12 hours; set `FORCE_FRESH_LOGIN=true` (the
-  default) to opt out of caching. If credentials are absent or invalid the
-  suite falls back to guest mode (the brief explicitly allows this).
+- **Login**: live credentials per `.env`. Each test gets a **fresh browser
+  context** with a real UI login — no cached `storage_state.json` reuse —
+  so every Allure report opens with a visible login step.
+- **Video**: recorded for **every test** (pass or fail) at 1280×720. This
+  adds ~5–15 MB per test but guarantees the reviewer can watch the full
+  user journey.
 - **Site profiles**: only the `default` profile (`automationexercise.com`)
-  is exercised today. Adding a new profile is one entry in
-  [`src/config/settings.py`](src/config/settings.py) (`PROFILES` dict).
-- **Currency / decimal separator** is locale-aware via the `PriceParser`
-  and the `decimal_separator` field on each profile. The default profile
-  uses `Rs.` (INR) since that's what automationexercise.com displays.
-- **Captcha / anti-bot challenges** are not bypassed. automationexercise.com
-  is a public testing site and does not currently present any.
-- **Section 5 (AI-Bugs review) is intentionally not included** - it's
-  tracked as a separate task in
-  [`ReadMeAIBugs.md`](ReadMeAIBugs.md).
+  is exercised. Adding a new profile is one entry in `src/config/settings.py`.
+- **Currency**: Rs. (INR), locale-aware via `PriceParser`.
+- **Anti-bot**: automationexercise.com does not present CAPTCHA/anti-bot.
+- **Ad pop-ups**: auto-dismissed via `page.add_locator_handler` + network
+  blocking in `conftest.py`.
+- **Checkout**: we verify the "Review Your Order" summary page but do
+  **not** click "Place Order" — the site's payment form is a simulator.
+- **Process teardown**: a watchdog timer force-kills the process 8 seconds
+  after the last test to prevent Playwright's session teardown from hanging
+  (a known Windows + Python 3.13 issue).
 
 ## Project layout
 
 ```
 .
-+-- .cursor/                           Cursor project rules, commands, MCP
-|   +-- rules/                         5 .mdc rule files (auto-applied)
-|   +-- commands/                      Slash commands for repeatable workflows
-|   \-- mcp.json                       Project-scoped MCP servers
-+-- docs/
-|   +-- personas/                      QA Architect / Test Engineer / Code Reviewer
-|   \-- ai-workflow.md                 How the AI layer fits together
-+-- src/
-|   +-- config/                        pydantic-settings + region profiles
-|   +-- pages/                         Page Object Model
-|   +-- components/                    Reusable widgets
-|   +-- flows/                         The 4 brief functions
-|   \-- utils/                         price_parser, screenshot, logger, variant_picker
-+-- tests/
-|   +-- conftest.py                    Fixtures (browser/context/page, login, allure hooks)
-|   +-- test_login.py                  Login flow (positive + negative, data-driven)
-|   +-- test_e2e_purchase_flow.py      Headline scenario from the brief (skipped pending pivot)
-|   +-- test_search_data_driven.py     Parameterized over queries.yaml (skipped pending pivot)
-|   \-- test_price_parser_unit.py      Fast unit tests, no browser
-+-- data/                              login.yaml + queries.yaml (data-driven inputs)
-+-- scripts/
-|   +-- setup-secrets.ps1              Install sops+age, generate age key
-|   +-- encrypt-env.ps1                .env  ->  secrets/credentials.sops.yaml
-|   +-- decrypt-env.ps1                secrets/credentials.sops.yaml  ->  .env
-|   \-- make_login_evidence.py         Run login + save sanitised evidence
-+-- secrets/
-|   \-- credentials.sops.yaml          Encrypted credentials (committed)
-+-- AGENTS.md                          Universal AI playbook
-+-- README.md
-+-- ReadMeAIBugs.md                    Stub for the section-5 task
-+-- exercise-brief.html                Full English brief, dashboard view
-+-- pyproject.toml
-+-- pytest.ini
-+-- .env.example
-+-- .sops.yaml                         SOPS policy (which age keys may decrypt)
-+-- .gitleaks.toml                     Project-specific gitleaks allow-list
-+-- .pre-commit-config.yaml            gitleaks + ruff/black/hygiene hooks
-\-- .gitignore
+├── .cursor/                          Cursor project rules, commands, MCP
+├── docs/personas/                    QA Architect / Test Engineer / Code Reviewer
+├── src/
+│   ├── config/                       pydantic-settings + region profiles
+│   ├── pages/                        Page Object Model (6 pages)
+│   ├── components/                   Reusable widgets (header, paginator, price filter, product card)
+│   ├── flows/                        The 4 brief functions + checkout
+│   └── utils/                        price_parser, screenshot, logger, variant_picker
+├── tests/
+│   ├── conftest.py                   Fixtures, evidence wiring, watchdog, ad-popup handler
+│   ├── test_login.py                 Login flow (negative → positive, 6 assertions)
+│   ├── test_e2e_purchase_flow.py     Full purchase flow + checkout (14 assertions)
+│   └── test_search_data_driven.py    Data-driven search (3 scenarios × 4 assertions)
+├── data/queries.yaml                 Data-driven search scenarios
+├── scripts/
+│   ├── run-suite.ps1                 Full suite runner (brief order, pre-flight kill, auto-report)
+│   ├── run-with-login.ps1            Run any test with login prepended
+│   ├── build-report.ps1              Build Allure HTML report
+│   ├── open-report.ps1               Serve report over HTTP
+│   ├── view-report.ps1               Interactive allure serve
+│   ├── setup-secrets.ps1             Install sops+age, generate keypair
+│   ├── encrypt-env.ps1               .env → SOPS encrypted
+│   ├── decrypt-env.ps1               SOPS → .env
+│   └── make_login_evidence.py        Sanitised login evidence bundle
+├── clear-reports.ps1                 Wipe all reports + stale processes
+├── test-assertions.md                Per-test assertion reference (32 total)
+├── test-assertions.html              Same, styled HTML dashboard
+├── exercise-brief.html               Full English brief
+├── ReadMeAIBugs.md                   AI bug-hunting exercise (section 5)
+├── ReadMeAIBugs.html                 Same, styled HTML
+├── AGENTS.md                         Universal AI playbook
+├── pyproject.toml
+├── pytest.ini
+├── .env.example
+└── .gitignore
 ```
