@@ -11,6 +11,7 @@ inputs, and Allure reporting.
 > **Status:** all five tests pass on `main`. The full brief
 > (sections 4.1–4.3) is covered including the checkout page.
 > CI runs automatically on every push via GitHub Actions.
+> See the latest run in the **Actions** tab.
 
 > The full exercise brief in English is available as a one-page dashboard:
 > [`exercise-brief.html`](docs/exercise-brief.html).
