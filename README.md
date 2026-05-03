@@ -57,8 +57,10 @@ copy .env.example .env
 # (macOS/Linux: cp .env.example .env)
 ```
 
-Open `.env` and fill in `SITE_EMAIL` and `SITE_PASSWORD` (and optionally
-toggle `HEADED=true` for a visible browser).
+Open `.env` and fill in `SITE_EMAIL` and `SITE_PASSWORD`. You can register
+a free account at <https://www.automationexercise.com/login> in under
+30 seconds (any email + password), or ask the project owner for test
+credentials. Optionally toggle `HEADED=true` for a visible browser.
 
 ## Environment variables
 
