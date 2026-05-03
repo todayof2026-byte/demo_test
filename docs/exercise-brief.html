@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-commerce E2E Automation Exercise - Brief</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #f1f5f9;
+            --surface: #ffffff;
+            --surface-alt: #f8fafc;
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --text-muted: #475569;
+            --text-soft: #64748b;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-soft: #dbeafe;
+            --accent: #0ea5e9;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --code-bg: #0f172a;
+            --code-text: #e2e8f0;
+            --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+            --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+            --radius: 12px;
+        }
+
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        /* ============ Top bar ============ */
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .topbar-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-mark {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: #fff;
+            display: grid;
+            place-items: center;
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+        }
+
+        .brand-text h1 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .brand-text p {
+            font-size: 12px;
+            color: var(--text-soft);
+        }
+
+        .progress-wrap {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex: 1;
+            max-width: 520px;
+            min-width: 240px;
+        }
+
+        .progress-meta {
+            font-size: 13px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .progress-meta strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 8px;
+            background: var(--border);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 999px;
+            transition: width 0.3s ease;
+        }
+
+        .reset-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 7px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s ease;
+        }
+
+        .reset-btn:hover {
+            background: var(--surface-alt);
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        /* ============ Layout ============ */
+        .layout {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ============ Sidebar ============ */
+        .sidebar {
+            position: sticky;
+            top: 84px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            box-shadow: var(--shadow-sm);
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-soft);
+            margin-bottom: 10px;
+            padding: 0 8px;
+        }
+
+        .sidebar nav ul {
+            list-style: none;
+        }
+
+        .sidebar nav a {
+            display: block;
+            padding: 7px 10px;
+            border-radius: 7px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 13.5px;
+            transition: all 0.15s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar nav a:hover {
+            background: var(--surface-alt);
+            color: var(--text);
+        }
+
+        .sidebar nav a.active {
+            background: var(--primary-soft);
+            color: var(--primary-dark);
+            border-left-color: var(--primary);
+            font-weight: 500;
+        }
+
+        .sidebar nav .sub a {
+            padding-left: 26px;
+            font-size: 13px;
+        }
+
+        .sidebar nav .section-num {
+            display: inline-block;
+            width: 24px;
+            color: var(--text-soft);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .sidebar nav a.active .section-num {
+            color: var(--primary);
+        }
+
+        /* ============ Content ============ */
+        .content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            box-shadow: var(--shadow-sm);
+            scroll-margin-top: 84px;
+        }
+
+        .card h2 {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+        }
+
+        .card h2 .num {
+            color: var(--primary);
+            font-size: 18px;
+            font-weight: 500;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .card h3 {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text);
+            margin: 24px 0 10px;
+        }
+
+        .card .lede {
+            color: var(--text-muted);
+            margin-bottom: 18px;
+            font-size: 14.5px;
+        }
+
+        .card p {
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .card strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .card ul {
+            margin: 12px 0 12px 0;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .card ul.bullets {
+            padding-left: 20px;
+            list-style: disc;
+        }
+
+        .card ul.bullets li {
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        /* Checkbox tasks */
+        .task {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.12s ease;
+            border: 1px solid transparent;
+        }
+
+        .task:hover {
+            background: var(--surface-alt);
+        }
+
+        .task input[type="checkbox"] {
+            margin-top: 4px;
+            width: 17px;
+            height: 17px;
+            accent-color: var(--primary);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .task-text {
+            color: var(--text-muted);
+            flex: 1;
+        }
+
+        .task input[type="checkbox"]:checked ~ .task-text {
+            color: var(--text-soft);
+            text-decoration: line-through;
+        }
+
+        .task input[type="checkbox"]:checked ~ .task-text strong {
+            color: var(--text-soft);
+        }
+
+        /* Code blocks */
+        pre {
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 16px 18px;
+            border-radius: 10px;
+            overflow-x: auto;
+            font-size: 13.5px;
+            line-height: 1.55;
+            margin: 12px 0;
+            font-family: "SF Mono", Menlo, Consolas, "Courier New", monospace;
+        }
+
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: inherit;
+            font-family: inherit;
+        }
+
+        code {
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Menlo, Consolas, "Courier New", monospace;
+            color: var(--primary-dark);
+        }
+
+        /* Callouts */
+        .callout {
+            border-left: 4px solid var(--accent);
+            background: #f0f9ff;
+            padding: 14px 16px;
+            border-radius: 8px;
+            margin: 14px 0;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .callout.warn {
+            border-left-color: var(--warning);
+            background: #fffbeb;
+        }
+
+        .callout.note {
+            border-left-color: var(--primary);
+            background: var(--primary-soft);
+        }
+
+        .callout strong {
+            color: var(--text);
+        }
+
+        /* Function signature card */
+        .fn-card {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px;
+            background: var(--surface-alt);
+            margin: 14px 0 18px;
+        }
+
+        .fn-card h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        /* Grading table */
+        .grading {
+            display: grid;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .grading-row {
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            gap: 16px;
+            align-items: center;
+            padding: 12px 14px;
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .grading-weight {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .grading-label {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .grading-label strong {
+            display: block;
+            color: var(--text);
+            font-size: 15px;
+            margin-bottom: 2px;
+            font-weight: 600;
+        }
+
+        /* Tag pills */
+        .pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 8px 0 4px;
+        }
+
+        .pill {
+            display: inline-block;
+            background: var(--primary-soft);
+            color: var(--primary-dark);
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .pill.alt {
+            background: #ecfdf5;
+            color: #047857;
+        }
+
+        .pill.warn {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-soft);
+            font-size: 13px;
+        }
+
+        /* Print */
+        @media print {
+            .topbar, .sidebar, .reset-btn {
+                display: none !important;
+            }
+            .layout {
+                grid-template-columns: 1fr;
+                padding: 0;
+            }
+            .card {
+                box-shadow: none;
+                border: 1px solid #ddd;
+                page-break-inside: avoid;
+            }
+            body {
+                background: #fff;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<header class="topbar">
+    <div class="topbar-inner">
+        <div class="brand">
+            <div class="brand-mark">E2E</div>
+            <div class="brand-text">
+                <h1>E-commerce E2E Automation Exercise</h1>
+                <p>Full task brief &middot; English translation</p>
+            </div>
+        </div>
+        <div class="progress-wrap">
+            <div class="progress-meta"><strong id="progress-done">0</strong> / <span id="progress-total">0</span> tasks complete</div>
+            <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill"></div></div>
+        </div>
+        <button class="reset-btn" id="reset-btn" type="button">Reset progress</button>
+    </div>
+</header>
+
+<div class="layout">
+
+    <aside class="sidebar">
+        <h2>Contents</h2>
+        <nav>
+            <ul>
+                <li><a href="#section-1"><span class="section-num">1.</span>Exercise Goal</a></li>
+                <li><a href="#section-2"><span class="section-num">2.</span>Timeframe</a></li>
+                <li><a href="#section-3"><span class="section-num">3.</span>General Requirements</a></li>
+                <li><a href="#section-4"><span class="section-num">4.</span>Project Description</a></li>
+                <li class="sub"><a href="#section-4-1"><span class="section-num">4.1</span>Search by price</a></li>
+                <li class="sub"><a href="#section-4-2"><span class="section-num">4.2</span>Add items to cart</a></li>
+                <li class="sub"><a href="#section-4-3"><span class="section-num">4.3</span>Assert cart total</a></li>
+                <li><a href="#section-5"><span class="section-num">5.</span>AI Bugs Exercise</a></li>
+                <li><a href="#section-6"><span class="section-num">6.</span>Submission</a></li>
+                <li><a href="#section-7"><span class="section-num">7.</span>Evaluation Criteria</a></li>
+            </ul>
+        </nav>
+    </aside>
+
+    <main class="content">
+
+        <!-- Section 1 -->
+        <section class="card" id="section-1">
+            <h2><span class="num">1.</span>Exercise Goal</h2>
+            <p class="lede">Build an end-to-end automation scenario against a sample e-commerce site (this implementation targets <a href="https://www.automationexercise.com" target="_blank" rel="noopener">automationexercise.com</a>) that covers product search, price filtering, adding to cart, and total amount validation - while showcasing a clean, professional architecture.</p>
+            <ul>
+                <li class="task">
+                    <input type="checkbox" data-task="1-1">
+                    <span class="task-text">Implement an <strong>E2E scenario</strong> on automationexercise.com that includes product search, price filtering, adding to cart, and total amount verification.</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="1-2">
+                    <span class="task-text">Demonstrate a <strong>clean architecture</strong>: Page Object Model (POM), OOP, Data-Driven testing.</span>
+                </li>
+            </ul>
+        </section>
+
+        <!-- Section 2 -->
+        <section class="card" id="section-2">
+            <h2><span class="num">2.</span>Timeframe</h2>
+            <p>Plan for <strong>3-4 hours</strong> of net implementation time, plus an additional <strong>20-30 minutes</strong> for review and demonstration.</p>
+            <div class="pills">
+                <span class="pill">3-4h implementation</span>
+                <span class="pill alt">20-30min review/demo</span>
+            </div>
+        </section>
+
+        <!-- Section 3 -->
+        <section class="card" id="section-3">
+            <h2><span class="num">3.</span>General Requirements</h2>
+            <p class="lede">The following stack constraints and engineering practices are mandatory.</p>
+
+            <h3>Allowed automation framework</h3>
+            <div class="pills"><span class="pill">Playwright</span></div>
+
+            <h3>Allowed programming languages</h3>
+            <div class="pills"><span class="pill">Python</span></div>
+            <div class="callout note">
+                <strong>Note:</strong> The original brief shows TypeScript snippets for the function signatures, but lists Python as the implementation language. The stack choice (Python vs TypeScript Playwright) is still open and will be decided in the next step.
+            </div>
+
+            <h3>Allowed reporters</h3>
+            <div class="pills">
+                <span class="pill">Extent Reports</span>
+                <span class="pill">Allure Reports</span>
+                <span class="pill">Report Portal</span>
+            </div>
+
+            <h3>Engineering requirements</h3>
+            <ul>
+                <li class="task">
+                    <input type="checkbox" data-task="3-1">
+                    <span class="task-text">Develop using <strong>Object-Oriented Programming</strong> principles.</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="3-2">
+                    <span class="task-text">Implement the project using the <strong>Page Object Model (POM)</strong>.</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="3-3">
+                    <span class="task-text">Use <strong>Data-Driven</strong> test inputs sourced from an external file (<code>JSON</code> / <code>CSV</code> / <code>YAML</code>).</span>
+                </li>
+            </ul>
+        </section>
+
+        <!-- Section 4 -->
+        <section class="card" id="section-4">
+            <h2><span class="num">4.</span>Project Description</h2>
+            <p class="lede">Four core functions must be developed:</p>
+            <ul class="bullets">
+                <li><strong>Authentication</strong> (login)</li>
+                <li><strong>Search with price condition</strong> - <code>searchItemsByNameUnderPrice</code></li>
+                <li><strong>Add items to cart</strong> - <code>addItemsToCart</code></li>
+                <li><strong>Assert cart total</strong> - <code>assertCartTotalNotExceeds</code></li>
+            </ul>
+        </section>
+
+        <!-- Section 4.1 -->
+        <section class="card" id="section-4-1">
+            <h2><span class="num">4.1</span>Search Function with Price Condition</h2>
+            <p class="lede">Returns up to <code>N</code> item URLs whose price is less than or equal to <code>maxPrice</code>.</p>
+
+            <div class="fn-card">
+                <h4>Signature (TypeScript / Playwright example)</h4>
+<pre><code>// Returns up to N item links whose price is &lt;= maxPrice
+async function searchItemsByNameUnderPrice(
+    query: string,
+    maxPrice: number,
+    limit = 5
+): Promise&lt;string[]&gt;</code></pre>
+            </div>
+
+            <h3>Behavior</h3>
+            <ul>
+                <li class="task">
+                    <input type="checkbox" data-task="4-1-1">
+                    <span class="task-text">Perform a search using the <code>query</code> parameter.</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="4-1-2">
+                    <span class="task-text">If a <strong>price filter is available on the page</strong>, use it (min/max) to narrow down the results.</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="4-1-3">
+                    <span class="task-text">Use <strong>XPath</strong> to extract the first <code>limit</code> items (e.g. five) whose price is less than or equal to <code>maxPrice</code>.</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="4-1-4">
+                    <span class="task-text"><strong>Edge case - fewer than 5 items on the current page:</strong>
+                        <ul class="bullets" style="margin-top:6px;">
+                            <li>If <strong>paging is available</strong> (a "Next" button or page links), navigate to the next page and continue collecting items until reaching 5, or until the pages run out.</li>
+                            <li>If <strong>paging is not available</strong>, return the items that were found (even if fewer than 5).</li>
+                        </ul>
+                    </span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="4-1-5">
+                    <span class="task-text"><strong>Return value:</strong> an array of URLs - up to 5 results that match the price condition.</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="4-1-6">
+                    <span class="task-text">If fewer items were found, return whatever is available (returning <code>0</code> items is also valid).</span>
+                </li>
+            </ul>
+
+            <h3>Usage example</h3>
+<pre><code>const urls = await searchItemsByNameUnderPrice("shoes", 220, 5);</code></pre>
+        </section>
+
+        <!-- Section 4.2 -->
+        <section class="card" id="section-4-2">
+            <h2><span class="num">4.2</span>Function That Adds Items to the Cart</h2>
+
+            <div class="fn-card">
+                <h4>Signature</h4>
+<pre><code>async function addItemsToCart(urls: string[]): Promise&lt;void&gt;</code></pre>
+            </div>
+
+            <h3>Behavior</h3>
+            <ul>
+                <li class="task">
+                    <input type="checkbox" data-task="4-2-1">
+                    <span class="task-text">Iterate over each URL in a loop and open the item page.</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="4-2-2">
+                    <span class="task-text">If <strong>variants must be selected</strong> (size / color / quantity), pick values <strong>randomly</strong> from the available options.</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="4-2-3">
+                    <span class="task-text">Click <strong>"Add to cart"</strong>.</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="4-2-4">
+                    <span class="task-text">Return to the search screen / search tab.</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="4-2-5">
+                    <span class="task-text">Save a <strong>screenshot and log entry</strong> for every item that was added.</span>
+                </li>
+            </ul>
+        </section>
+
+        <!-- Section 4.3 -->
+        <section class="card" id="section-4-3">
+            <h2><span class="num">4.3</span>Function That Validates the Cart Total</h2>
+
+            <div class="fn-card">
+                <h4>Signature</h4>
+<pre><code>async function assertCartTotalNotExceeds(
+    budgetPerItem: number,
+    itemsCount: number
+): Promise&lt;void&gt;</code></pre>
+            </div>
+
+            <h3>Behavior</h3>
+            <ul>
+                <li class="task">
+                    <input type="checkbox" data-task="4-3-1">
+                    <span class="task-text">Open the shopping cart.</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="4-3-2">
+                    <span class="task-text">Read the <strong>subtotal / total amount</strong> as displayed on the site.</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="4-3-3">
+                    <span class="task-text">Calculate the threshold: <code>budgetPerItem * itemsCount</code>.</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="4-3-4">
+                    <span class="task-text">Assert that the <strong>total does not exceed the threshold</strong>.</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="4-3-5">
+                    <span class="task-text">Save a <strong>screenshot / trace</strong> of the cart page.</span>
+                </li>
+            </ul>
+
+            <h3>Full scenario example</h3>
+            <ul class="bullets">
+                <li>Call <code>searchItemsByNameUnderPrice("shoes", 220, 5)</code> &rarr; receive up to 5 URLs.</li>
+                <li>Call <code>addItemsToCart(urls)</code> &rarr; add all of them to the shopping cart.</li>
+                <li>Call <code>assertCartTotalNotExceeds(220, urls.length)</code> &rarr; assert that the cart total &le; <code>220 &times; number of items</code>.</li>
+            </ul>
+        </section>
+
+        <!-- Section 5 -->
+        <section class="card" id="section-5">
+            <h2><span class="num">5.</span>Bug-Hunting Exercise (20 minutes)</h2>
+            <p class="lede">A teammate used an AI tool to generate test code, but it does not behave as expected and they have come to consult with you. Review the code (<strong>static analysis only - no tools, no machine</strong>), identify the issues, and suggest fixes.</p>
+
+            <div class="callout warn">
+                <strong>Deliverable:</strong> Write the findings into a file named <code>ReadMeAIBugs</code>.
+            </div>
+
+            <h3>Tasks</h3>
+            <ul>
+                <li class="task">
+                    <input type="checkbox" data-task="5-1">
+                    <span class="task-text">Identify <strong>at least 3 problems</strong> in the code.</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="5-2">
+                    <span class="task-text">Explain <strong>in detail</strong> what each identified problem is.</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="5-3">
+                    <span class="task-text">Propose a <strong>line-by-line fix</strong> for the problematic code.</span>
+                </li>
+            </ul>
+        </section>
+
+        <!-- Section 6 -->
+        <section class="card" id="section-6">
+            <h2><span class="num">6.</span>What to Submit</h2>
+            <ul>
+                <li class="task">
+                    <input type="checkbox" data-task="6-1">
+                    <span class="task-text">A <strong>GitHub link</strong> to the repository (with access granted to the reviewer).</span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="6-2">
+                    <span class="task-text">A <strong>README</strong> file containing:
+                        <ul class="bullets" style="margin-top:6px;">
+                            <li>How to run (commands, prerequisites).</li>
+                            <li>A short explanation of the architecture.</li>
+                            <li>Limitations / assumptions (e.g. login stub or guest mode, currency).</li>
+                        </ul>
+                    </span>
+                </li>
+                <li class="task">
+                    <input type="checkbox" data-task="6-3">
+                    <span class="task-text">A <strong>run report</strong> (Allure / HTML / JUnit XML).</span>
+                </li>
+            </ul>
+        </section>
+
+        <!-- Section 7 -->
+        <section class="card" id="section-7">
+            <h2><span class="num">7.</span>Evaluation Criteria</h2>
+            <p class="lede">The exercise is graded according to the following weights:</p>
+
+            <div class="grading">
+                <div class="grading-row">
+                    <div class="grading-weight">45%</div>
+                    <div class="grading-label">
+                        <strong>Architecture &amp; Code Cleanliness</strong>
+                        POM, OOP, Single Responsibility Principle (SRP), Utils.
+                    </div>
+                </div>
+                <div class="grading-row">
+                    <div class="grading-weight">35%</div>
+                    <div class="grading-label">
+                        <strong>Robustness &amp; Smart Locators</strong>
+                        Handling dynamic content, variant selection, paging, price parsing.
+                    </div>
+                </div>
+                <div class="grading-row">
+                    <div class="grading-weight">15%</div>
+                    <div class="grading-label">
+                        <strong>Data-Driven</strong>
+                        Configuration, environment variables, profiles.
+                    </div>
+                </div>
+                <div class="grading-row">
+                    <div class="grading-weight">15%</div>
+                    <div class="grading-label">
+                        <strong>Reports / Documentation</strong>
+                        A clear README and reports / screenshots.
+                    </div>
+                </div>
+            </div>
+
+            <div class="callout warn" style="margin-top:18px;">
+                <strong>Note on totals:</strong> The weights as stated in the original brief sum to <strong>110%</strong> (45 + 35 + 15 + 15). This appears to be a typo in the source document and is preserved here as-is - clarify with the reviewer if needed.
+            </div>
+        </section>
+
+        <div class="footer">
+            Progress is saved automatically in your browser (localStorage).
+            Use <strong>Reset progress</strong> in the top bar to clear it.
+        </div>
+
+    </main>
+</div>
+
+<script>
+    (function () {
+        const STORAGE_KEY = 'ecommerce-e2e-brief-progress-v1';
+        const checkboxes = Array.from(document.querySelectorAll('.task input[type="checkbox"]'));
+        const totalEl = document.getElementById('progress-total');
+        const doneEl = document.getElementById('progress-done');
+        const fillEl = document.getElementById('progress-fill');
+        const resetBtn = document.getElementById('reset-btn');
+
+        totalEl.textContent = checkboxes.length;
+
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                return raw ? JSON.parse(raw) : {};
+            } catch (e) {
+                return {};
+            }
+        }
+
+        function saveState(state) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            } catch (e) { /* ignore quota / private mode errors */ }
+        }
+
+        function updateProgress() {
+            const done = checkboxes.filter(c => c.checked).length;
+            doneEl.textContent = done;
+            const pct = checkboxes.length === 0 ? 0 : (done / checkboxes.length) * 100;
+            fillEl.style.width = pct.toFixed(1) + '%';
+        }
+
+        const state = loadState();
+        checkboxes.forEach(cb => {
+            const id = cb.dataset.task;
+            if (state[id]) cb.checked = true;
+            cb.addEventListener('change', () => {
+                const cur = loadState();
+                if (cb.checked) cur[id] = true;
+                else delete cur[id];
+                saveState(cur);
+                updateProgress();
+            });
+        });
+        updateProgress();
+
+        resetBtn.addEventListener('click', () => {
+            if (!confirm('Reset all task progress?')) return;
+            localStorage.removeItem(STORAGE_KEY);
+            checkboxes.forEach(cb => { cb.checked = false; });
+            updateProgress();
+        });
+
+        // Scroll-spy: highlight active sidebar link
+        const sections = Array.from(document.querySelectorAll('.card[id]'));
+        const navLinks = Array.from(document.querySelectorAll('.sidebar nav a'));
+        const linkById = Object.fromEntries(
+            navLinks.map(a => [a.getAttribute('href').slice(1), a])
+        );
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    navLinks.forEach(a => a.classList.remove('active'));
+                    const link = linkById[entry.target.id];
+                    if (link) link.classList.add('active');
+                }
+            });
+        }, { rootMargin: '-30% 0px -60% 0px', threshold: 0 });
+
+        sections.forEach(s => observer.observe(s));
+    })();
+</script>
+
+</body>
+</html>

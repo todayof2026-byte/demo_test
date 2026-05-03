@@ -1,0 +1,7 @@
+{
+  "test_id": "tests/test_login.py::test_login_negative_then_positive[chromium]",
+  "outcome": "passed",
+  "duration_seconds": 14.423,
+  "started_at_utc": "2026-05-03T06:22:46+00:00",
+  "longrepr": null
+}

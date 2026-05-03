@@ -153,3 +153,24 @@ class LoginPage(BasePage):
             return self.page.locator(self.LOGIN_FORM_HEADING).first.is_visible(timeout=2000)
         except PlaywrightTimeout:
             return False
+
+    # ---------------------------------------------------------------- logout
+    def logout(self) -> "LoginPage":
+        """Click the 'Logout' link in the header and wait to land back on ``/login``.
+
+        automationexercise.com redirects to ``/login`` after logout and the
+        login form becomes visible again, so we wait for the form heading.
+        """
+        self.log.info("Clicking Logout")
+        try:
+            self.page.locator(self.LOGOUT_LINK).first.click(timeout=5_000)
+        except PlaywrightTimeout:
+            self.log.warning("Logout link not found or not clickable")
+            return self
+        try:
+            self.page.locator(self.LOGIN_FORM_HEADING).first.wait_for(
+                state="visible", timeout=8_000
+            )
+        except PlaywrightTimeout:
+            self.log.warning("Login form did not reappear after logout")
+        return self

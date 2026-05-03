@@ -1,0 +1,6 @@
+"BROKEN","EPIC","FAILED","FEATURE","PASSED","SKIPPED","STORY","UNKNOWN"
+"0","automationexercise.com E2E","0","Purchase flow","1","0","Logged-in user: search, add to cart, assert subtotal","0"
+"0","automationexercise.com E2E","0","Search with price filter","1","0","T-shirts under Rs. 1500 - happy path with several matches.","0"
+"0","automationexercise.com E2E","0","Search with price filter","1","0","Dresses under Rs. 600 - exercises tight client-side filtering.","0"
+"0","automationexercise.com E2E","0","Authentication","1","0","Full auth lifecycle: wrong creds rejected, correct creds accepted, logout ends session — all in one browser window","0"
+"0","automationexercise.com E2E","0","Search with price filter","1","0","Nonsense query - returning zero URLs is valid per the brief.","0"

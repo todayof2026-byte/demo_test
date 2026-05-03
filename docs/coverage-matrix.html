@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brief Coverage Matrix — automationexercise.com E2E</title>
+<style>
+  :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --green: #4ade80;
+    --yellow: #facc15; --red: #f87171; --text: #e2e8f0; --muted: #94a3b8;
+    --border: #334155; --pass: #166534; --pass-text: #4ade80; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg);
+    color: var(--text); line-height: 1.6; padding: 2rem; max-width: 1200px; margin: auto; }
+  h1 { color: var(--accent); font-size: 1.75rem; border-bottom: 2px solid var(--accent);
+    padding-bottom: .5rem; margin-bottom: .5rem; }
+  .subtitle { color: var(--muted); font-size: .95rem; margin-bottom: 2rem; }
+  h2 { color: var(--green); font-size: 1.3rem; margin: 2.5rem 0 .75rem;
+    border-bottom: 1px solid var(--border); padding-bottom: .4rem; }
+  h3 { color: var(--yellow); font-size: 1.05rem; margin: 1.5rem 0 .5rem; }
+  table { width: 100%; border-collapse: collapse; margin: .75rem 0 1.5rem; }
+  th, td { padding: 8px 12px; border: 1px solid var(--border); text-align: left;
+    vertical-align: top; font-size: .88rem; }
+  th { background: var(--card); color: var(--accent); font-weight: 600; white-space: nowrap; }
+  tr:nth-child(even) td { background: rgba(30,41,59,.4); }
+  code { background: var(--border); padding: 1px 5px; border-radius: 3px; color: var(--text);
+    font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: .82rem; }
+  .status { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: .78rem;
+    font-weight: 700; }
+  .pass { background: var(--pass); color: var(--pass-text); }
+  .bonus { background: #1e3a5f; color: var(--accent); }
+  .na { background: var(--border); color: var(--muted); }
+  .weight { display: inline-block; background: var(--accent); color: var(--bg);
+    padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: .85rem; }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem; margin: 1.5rem 0 2rem; }
+  .summary-card { background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.25rem; text-align: center; }
+  .summary-card .number { font-size: 2rem; font-weight: 700; color: var(--green); }
+  .summary-card .label { font-size: .85rem; color: var(--muted); margin-top: .25rem; }
+  .file-ref { color: var(--accent); font-family: 'Cascadia Code', monospace; font-size: .82rem; }
+  .section-tag { display: inline-block; background: var(--card); border: 1px solid var(--border);
+    padding: 1px 8px; border-radius: 10px; font-size: .72rem; color: var(--muted); margin: 1px 2px; }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border);
+    color: var(--muted); font-size: .8rem; text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>Brief Coverage Matrix</h1>
+<p class="subtitle">Every task checkbox from <code>exercise-brief.html</code> mapped to the implementation.
+  All 28 required tasks are covered. Generated from the latest green run (5/5 passed).</p>
+
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="number">28/28</div>
+    <div class="label">Brief tasks covered</div>
+  </div>
+  <div class="summary-card">
+    <div class="number">5/5</div>
+    <div class="label">Tests passing</div>
+  </div>
+  <div class="summary-card">
+    <div class="number">35</div>
+    <div class="label">Total assertions</div>
+  </div>
+  <div class="summary-card">
+    <div class="number">6 + 3</div>
+    <div class="label">Bugs + smells found (Sec 5)</div>
+  </div>
+</div>
+
+<!-- Section 1 -->
+<h2>Section 1 — Exercise Goal</h2>
+<table>
+  <tr><th>#</th><th>Task</th><th>Status</th><th>Implementation</th></tr>
+  <tr>
+    <td>1-1</td>
+    <td>E2E scenario: search, price filtering, add to cart, total verification</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td><span class="file-ref">tests/test_e2e_purchase_flow.py</span> chains all 4 required functions end-to-end</td>
+  </tr>
+  <tr>
+    <td>1-2</td>
+    <td>Clean architecture: POM, OOP, Data-Driven</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td>6 page objects in <span class="file-ref">src/pages/</span>, OOP throughout, YAML-driven tests via <span class="file-ref">data/queries.yaml</span></td>
+  </tr>
+</table>
+
+<!-- Section 3 -->
+<h2>Section 3 — General Requirements</h2>
+<table>
+  <tr><th>#</th><th>Task</th><th>Status</th><th>Implementation</th></tr>
+  <tr>
+    <td>3-1</td>
+    <td>Object-Oriented Programming principles</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td><code>BasePage</code> inheritance, typed <code>pydantic-settings</code> config, <code>Decimal</code> for money</td>
+  </tr>
+  <tr>
+    <td>3-2</td>
+    <td>Page Object Model (POM)</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td><code>LoginPage</code>, <code>SearchResultsPage</code>, <code>ProductPage</code>, <code>CartPage</code>, <code>CheckoutPage</code>, <code>HomePage</code></td>
+  </tr>
+  <tr>
+    <td>3-3</td>
+    <td>Data-Driven from external file (YAML)</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td><span class="file-ref">data/queries.yaml</span> → 3 parametrized scenarios in <span class="file-ref">test_search_data_driven.py</span></td>
+  </tr>
+</table>
+
+<!-- Section 4.1 -->
+<h2>Section 4.1 — Search Function with Price Condition</h2>
+<p><span class="file-ref">src/flows/search_flow.py</span> → <code>search_items_by_name_under_price()</code></p>
+<table>
+  <tr><th>#</th><th>Task</th><th>Status</th><th>Implementation</th></tr>
+  <tr>
+    <td>4-1-1</td>
+    <td>Perform search using <code>query</code></td>
+    <td><span class="status pass">COVERED</span></td>
+    <td><code>SearchResultsPage.search(query)</code> submits the search form</td>
+  </tr>
+  <tr>
+    <td>4-1-2</td>
+    <td>Use price filter if available on the page</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td><code>apply_max_price()</code> — no UI filter on this site, client-side filtering instead (documented)</td>
+  </tr>
+  <tr>
+    <td>4-1-3</td>
+    <td>Use <strong>XPath</strong> to extract items ≤ maxPrice</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td><code>PRODUCT_CARD_XPATH</code> + <code>PRICE_TEXT_XPATH</code> in <span class="file-ref">SearchResultsPage</span> — XPath used as mandated</td>
+  </tr>
+  <tr>
+    <td>4-1-4</td>
+    <td>Edge case: paging (Next button or return fewer)</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td><code>Paginator.has_next()</code> checked; returns False on this site (documented). Fewer items returned gracefully.</td>
+  </tr>
+  <tr>
+    <td>4-1-5</td>
+    <td>Return array of URLs (up to 5)</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td>Returns <code>list[str]</code> of <code>/product_details/</code> URLs</td>
+  </tr>
+  <tr>
+    <td>4-1-6</td>
+    <td>Return 0 items if none found (valid)</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td><code>empty_ok_nonsense</code> scenario validates empty result is accepted</td>
+  </tr>
+</table>
+
+<!-- Section 4.2 -->
+<h2>Section 4.2 — Add Items to Cart</h2>
+<p><span class="file-ref">src/flows/cart_flow.py</span> → <code>add_items_to_cart()</code></p>
+<table>
+  <tr><th>#</th><th>Task</th><th>Status</th><th>Implementation</th></tr>
+  <tr>
+    <td>4-2-1</td>
+    <td>Iterate URLs, open each item page</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td>Loop in <code>add_items_to_cart()</code> opens each product page via <code>ProductPage</code></td>
+  </tr>
+  <tr>
+    <td>4-2-2</td>
+    <td>Select variants randomly (size/color/quantity)</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td><span class="file-ref">src/utils/variant_picker.py</span> — no variants on this site, but code handles it</td>
+  </tr>
+  <tr>
+    <td>4-2-3</td>
+    <td>Click "Add to cart"</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td><code>ProductPage.add_to_cart()</code> + modal dismiss (<code>#cartModal</code>)</td>
+  </tr>
+  <tr>
+    <td>4-2-4</td>
+    <td>Return to the search screen</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td><code>_return_to_search(page)</code> via <code>page.go_back()</code></td>
+  </tr>
+  <tr>
+    <td>4-2-5</td>
+    <td>Screenshot + log per item added</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td>Screenshot + Allure step for every item; <code>loguru</code> per-test log</td>
+  </tr>
+</table>
+
+<!-- Section 4.3 -->
+<h2>Section 4.3 — Assert Cart Total</h2>
+<p><span class="file-ref">src/flows/cart_flow.py</span> → <code>assert_cart_total_not_exceeds()</code></p>
+<table>
+  <tr><th>#</th><th>Task</th><th>Status</th><th>Implementation</th></tr>
+  <tr>
+    <td>4-3-1</td>
+    <td>Open the shopping cart</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td><code>CartPage(page).open()</code> navigates to <code>/view_cart</code></td>
+  </tr>
+  <tr>
+    <td>4-3-2</td>
+    <td>Read subtotal / total amount</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td><code>CartPage.get_subtotal()</code> parses <code>Rs.</code> prices using <code>Decimal</code></td>
+  </tr>
+  <tr>
+    <td>4-3-3</td>
+    <td>Calculate threshold: <code>budgetPerItem × itemsCount</code></td>
+    <td><span class="status pass">COVERED</span></td>
+    <td>Computed inline in the flow function</td>
+  </tr>
+  <tr>
+    <td>4-3-4</td>
+    <td>Assert total ≤ threshold</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td><code>assert float(subtotal) &lt;= threshold</code></td>
+  </tr>
+  <tr>
+    <td>4-3-5</td>
+    <td>Screenshot / trace of the cart page</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td>Always-on Playwright trace + video + screenshot</td>
+  </tr>
+</table>
+
+<!-- Section 5 -->
+<h2>Section 5 — AI Bug-Hunting Exercise (20 min)</h2>
+<table>
+  <tr><th>#</th><th>Task</th><th>Status</th><th>Deliverable</th></tr>
+  <tr>
+    <td>5-1</td>
+    <td>Identify at least 3 problems</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td><strong>6 bugs + 3 code smells</strong> identified in <span class="file-ref">ReadMeAIBugs/ReadMeAIBugs.md</span></td>
+  </tr>
+  <tr>
+    <td>5-2</td>
+    <td>Explain each problem in detail</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td>Detailed explanations with code context and root-cause analysis</td>
+  </tr>
+  <tr>
+    <td>5-3</td>
+    <td>Propose line-by-line fix</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td>Diff-style fixes per issue + full corrected version at the end</td>
+  </tr>
+</table>
+
+<!-- Section 6 -->
+<h2>Section 6 — What to Submit</h2>
+<table>
+  <tr><th>#</th><th>Task</th><th>Status</th><th>Deliverable</th></tr>
+  <tr>
+    <td>6-1</td>
+    <td>GitHub link (with access)</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td>Public repo pushed to <code>main</code> branch</td>
+  </tr>
+  <tr>
+    <td>6-2</td>
+    <td>README: how to run, architecture, limitations</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td>Comprehensive <span class="file-ref">README.md</span> with all three sections + more</td>
+  </tr>
+  <tr>
+    <td>6-3</td>
+    <td>Run report (Allure / HTML / JUnit XML)</td>
+    <td><span class="status pass">COVERED</span></td>
+    <td>Allure HTML report + JUnit XML + per-test video, trace, screenshots, logs</td>
+  </tr>
+</table>
+
+<!-- Section 7 -->
+<h2>Section 7 — Evaluation Criteria</h2>
+<table>
+  <tr><th>Criterion</th><th>Weight</th><th>How we score</th></tr>
+  <tr>
+    <td>Architecture &amp; Code Cleanliness</td>
+    <td><span class="weight">45%</span></td>
+    <td>POM (6 pages), OOP (<code>BasePage</code> hierarchy), SRP (pages/flows/utils layers), typed config, <code>Decimal</code> money</td>
+  </tr>
+  <tr>
+    <td>Robustness &amp; Smart Locators</td>
+    <td><span class="weight">35%</span></td>
+    <td><code>data-qa</code> selectors, XPath for product cards, ad-popup auto-dismiss, price parser with <code>Rs.</code>, variant picker, session watchdog</td>
+  </tr>
+  <tr>
+    <td>Data-Driven</td>
+    <td><span class="weight">15%</span></td>
+    <td><code>pydantic-settings</code>, <code>.env</code>, YAML data files, site profile system, <code>SecretStr</code> for passwords</td>
+  </tr>
+  <tr>
+    <td>Reports / Documentation</td>
+    <td><span class="weight">15%</span></td>
+    <td>Allure (severity, tags, categories, environment widget), video per test, trace, README, assertion docs, this coverage matrix</td>
+  </tr>
+</table>
+
+<!-- Bonus -->
+<h2>Bonus — Beyond Brief Requirements</h2>
+<table>
+  <tr><th>Feature</th><th>Status</th><th>Details</th></tr>
+  <tr>
+    <td>Checkout page verification</td>
+    <td><span class="status bonus">BONUS</span></td>
+    <td>8 assertions on <code>/checkout</code>: headings, addresses, line items, total match, Place Order button</td>
+  </tr>
+  <tr>
+    <td>Logout test + assertions</td>
+    <td><span class="status bonus">BONUS</span></td>
+    <td>3 logout assertions: login form visible, not authenticated, URL is <code>/login</code></td>
+  </tr>
+  <tr>
+    <td>Session-scoped shared browser</td>
+    <td><span class="status bonus">BONUS</span></td>
+    <td>Single login for entire suite; browser never closes between tests</td>
+  </tr>
+  <tr>
+    <td>SOPS + age credential encryption</td>
+    <td><span class="status bonus">BONUS</span></td>
+    <td>Encrypted credentials in repo; <code>.env</code> never committed</td>
+  </tr>
+  <tr>
+    <td>Pre-commit <code>gitleaks</code> scanning</td>
+    <td><span class="status bonus">BONUS</span></td>
+    <td>Blocks accidental secret commits</td>
+  </tr>
+  <tr>
+    <td>AI tooling layer</td>
+    <td><span class="status bonus">BONUS</span></td>
+    <td>Cursor rules, slash commands, MCP config, role personas</td>
+  </tr>
+  <tr>
+    <td>Page-ready wait before screenshots</td>
+    <td><span class="status bonus">BONUS</span></td>
+    <td><code>_wait_for_page_ready()</code>: domcontentloaded → load → networkidle before every capture</td>
+  </tr>
+</table>
+
+<footer>
+  Generated for the automationexercise.com E2E Playwright project &middot; 5 tests &middot; 35 assertions &middot; All passing
+</footer>
+
+</body>
+</html>

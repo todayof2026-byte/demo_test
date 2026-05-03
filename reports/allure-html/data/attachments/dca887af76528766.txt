@@ -1,0 +1,12 @@
+09:24:03.081 | INFO     | SearchResultsPage | src.pages.base_page:open:63 - Navigating to https://www.automationexercise.com/products
+09:24:06.147 | INFO     | SearchResultsPage | src.pages.search_results_page:apply_max_price:94 - automationexercise.com has no UI price filter; applying max_price=1500.0 client-side via ProductCard.
+09:24:06.176 | INFO     | SearchResultsPage | src.pages.search_results_page:collect_cards:111 - Discovered 6 candidate product elements
+09:24:07.182 | INFO     | SearchResultsPage | src.pages.search_results_page:collect_cards:143 - Parsed 6 unique product cards
+09:24:07.183 | INFO     | search_flow | src.flows.search_flow:search_items_by_name_under_price:65 -   + Men Tshirt @ 400 -> https://www.automationexercise.com/product_details/2
+09:24:07.184 | INFO     | search_flow | src.flows.search_flow:search_items_by_name_under_price:65 -   + Pure Cotton V-Neck T-Shirt @ 129 -> https://www.automationexercise.com/product_details/28
+09:24:07.184 | INFO     | search_flow | src.flows.search_flow:search_items_by_name_under_price:65 -   + Green Side Placket Detail T-Shirt @ 100 -> https://www.automationexercise.com/product_details/29
+09:24:07.184 | INFO     | search_flow | src.flows.search_flow:search_items_by_name_under_price:65 -   + Premium Polo T-Shirts @ 150 -> https://www.automationexercise.com/product_details/30
+09:24:07.184 | INFO     | search_flow | src.flows.search_flow:search_items_by_name_under_price:65 -   + Pure Cotton Neon Green Tshirt @ 850 -> https://www.automationexercise.com/product_details/31
+09:24:07.185 | INFO     | search_flow | src.flows.search_flow:search_items_by_name_under_price:84 - Returning 5 URLs (limit=5, pages=1)
+09:24:07.596 | INFO     | screenshot | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_search_returns_urls_within_budget_chromium-full_results_tshirt\20260503_092403\screenshots\01_search_tshirt_under_1500.png
+09:24:08.044 | INFO     | screenshot | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_search_returns_urls_within_budget_chromium-full_results_tshirt\20260503_092403\screenshots\02_99_final_state_test_search_returns_urls_within_budget_chromium-full_results_tshirt_.png

@@ -1,0 +1,9 @@
+09:24:14.377 | INFO     | src.pages.base_page:open:63 - Navigating to https://www.automationexercise.com/products
+09:24:18.913 | INFO     | src.pages.search_results_page:apply_max_price:94 - automationexercise.com has no UI price filter; applying max_price=100.0 client-side via ProductCard.
+09:24:18.939 | INFO     | src.pages.search_results_page:collect_cards:111 - Discovered 0 candidate product elements
+09:24:18.939 | INFO     | src.pages.search_results_page:collect_cards:143 - Parsed 0 unique product cards
+09:24:19.102 | INFO     | src.flows.search_flow:search_items_by_name_under_price:76 - No more pages; stopping with what we have.
+09:24:19.102 | INFO     | src.flows.search_flow:search_items_by_name_under_price:84 - Returning 0 URLs (limit=5, pages=1)
+09:24:19.776 | INFO     | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_search_returns_urls_within_budget_chromium-empty_ok_nonsense\20260503_092414\screenshots\01_search_asdfqwerty12345nope_under_100.png
+09:24:20.034 | INFO     | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_search_returns_urls_within_budget_chromium-empty_ok_nonsense\20260503_092414\screenshots\02_99_final_state_test_search_returns_urls_within_budget_chromium-empty_ok_nonsense_.png
+09:24:23.378 | INFO     | conftest:_finalise_video:318 - Saved video: C:\demo_test\reports\evidence\_session_shared\20260503_062322\video.webm

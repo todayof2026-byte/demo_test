@@ -1,0 +1,12 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"Search -> add to cart -> assert subtotal, all in one logged-in session.","32990","End-to-end purchase flow: logged-in search -> add to cart -> assert cart total -> verify checkout summary","tests","2026-05-03","passed","2026-05-03","","test_e2e_purchase_flow","",""
+"Returned URLs are at most ``limit``, are all PDPs, and are unique.","4548","Search 'tshirt' under Rs.1500 (limit=5) -> <= 5 unique PDP URLs","tests","2026-05-03","passed","2026-05-03","","test_search_data_driven","",""
+"Returned URLs are at most ``limit``, are all PDPs, and are unique.","5551","Search 'dress' under Rs.600 (limit=5) -> <= 5 unique PDP URLs","tests","2026-05-03","passed","2026-05-03","","test_search_data_driven","",""
+"Drive both negative and positive paths in one browser window.
+
+The same ``LoginPage`` / ``guest_page`` is used end-to-end so the
+Playwright trace and (when video is enabled) the recording capture an
+uninterrupted user journey: wrong attempt -> visible rejection -> retry
+with real credentials -> authenticated state.
+","14422","Login: wrong password rejected -> correct password authenticates -> logout returns to login page","tests","2026-05-03","passed","2026-05-03","","test_login","",""
+"Returned URLs are at most ``limit``, are all PDPs, and are unique.","5427","Search 'asdfqwerty12345nope' under Rs.100 (limit=5) -> <= 5 unique PDP URLs","tests","2026-05-03","passed","2026-05-03","","test_search_data_driven","",""

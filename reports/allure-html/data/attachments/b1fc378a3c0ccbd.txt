@@ -1,0 +1,58 @@
+09:23:23.406 | INFO     | conftest:_shared_browser_page:268 - Shared browser: performing one-time visible positive login
+09:23:23.407 | INFO     | src.pages.base_page:open:63 - Navigating to https://www.automationexercise.com/login
+09:23:24.540 | INFO     | src.pages.login_page:fill_credentials:45 - Filling login form for 'today_test@gmail.com'
+09:23:26.473 | INFO     | src.flows.auth_flow:login:44 - Login succeeded; session is authenticated.
+09:23:29.688 | INFO     | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\_loose\screenshots\01_login_success.png
+09:23:29.733 | INFO     | src.pages.base_page:open:63 - Navigating to https://www.automationexercise.com/view_cart
+09:23:31.520 | INFO     | src.pages.cart_page:delete_all_items:100 - Clearing 5 stale item(s) from cart
+09:23:35.162 | INFO     | src.pages.cart_page:delete_all_items:115 - Deleted 5 item(s) from cart
+09:23:35.162 | INFO     | src.pages.base_page:open:63 - Navigating to https://www.automationexercise.com/products
+09:23:39.154 | INFO     | src.pages.search_results_page:apply_max_price:94 - automationexercise.com has no UI price filter; applying max_price=1500.0 client-side via ProductCard.
+09:23:39.187 | INFO     | src.pages.search_results_page:collect_cards:111 - Discovered 6 candidate product elements
+09:23:40.239 | INFO     | src.pages.search_results_page:collect_cards:143 - Parsed 6 unique product cards
+09:23:40.240 | INFO     | src.flows.search_flow:search_items_by_name_under_price:65 -   + Men Tshirt @ 400 -> https://www.automationexercise.com/product_details/2
+09:23:40.240 | INFO     | src.flows.search_flow:search_items_by_name_under_price:65 -   + Pure Cotton V-Neck T-Shirt @ 129 -> https://www.automationexercise.com/product_details/28
+09:23:40.240 | INFO     | src.flows.search_flow:search_items_by_name_under_price:65 -   + Green Side Placket Detail T-Shirt @ 100 -> https://www.automationexercise.com/product_details/29
+09:23:40.240 | INFO     | src.flows.search_flow:search_items_by_name_under_price:65 -   + Premium Polo T-Shirts @ 150 -> https://www.automationexercise.com/product_details/30
+09:23:40.240 | INFO     | src.flows.search_flow:search_items_by_name_under_price:65 -   + Pure Cotton Neon Green Tshirt @ 850 -> https://www.automationexercise.com/product_details/31
+09:23:40.241 | INFO     | src.flows.search_flow:search_items_by_name_under_price:84 - Returning 5 URLs (limit=5, pages=1)
+09:23:40.731 | INFO     | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_full_purchase_flow_under_budget_chromium\20260503_092329\screenshots\01_search_tshirt_under_1500.png
+09:23:40.762 | INFO     | src.pages.base_page:open:63 - Navigating to https://www.automationexercise.com/product_details/2
+09:23:42.067 | INFO     | src.pages.product_page:add_to_cart:74 - Clicked Add-to-cart
+09:23:42.990 | INFO     | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_full_purchase_flow_under_budget_chromium\20260503_092329\screenshots\02_add_to_cart_1.png
+09:23:43.015 | INFO     | src.flows.cart_flow:add_items_to_cart:58 -   + added: https://www.automationexercise.com/product_details/2
+09:23:43.627 | INFO     | src.pages.base_page:open:63 - Navigating to https://www.automationexercise.com/product_details/28
+09:23:46.629 | INFO     | src.pages.product_page:add_to_cart:74 - Clicked Add-to-cart
+09:23:47.589 | INFO     | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_full_purchase_flow_under_budget_chromium\20260503_092329\screenshots\03_add_to_cart_2.png
+09:23:47.619 | INFO     | src.flows.cart_flow:add_items_to_cart:58 -   + added: https://www.automationexercise.com/product_details/28
+09:23:48.314 | INFO     | src.pages.base_page:open:63 - Navigating to https://www.automationexercise.com/product_details/29
+09:23:49.932 | INFO     | src.pages.product_page:add_to_cart:74 - Clicked Add-to-cart
+09:23:50.884 | INFO     | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_full_purchase_flow_under_budget_chromium\20260503_092329\screenshots\04_add_to_cart_3.png
+09:23:50.913 | INFO     | src.flows.cart_flow:add_items_to_cart:58 -   + added: https://www.automationexercise.com/product_details/29
+09:23:51.632 | INFO     | src.pages.base_page:open:63 - Navigating to https://www.automationexercise.com/product_details/30
+09:23:53.136 | INFO     | src.pages.product_page:add_to_cart:74 - Clicked Add-to-cart
+09:23:54.046 | INFO     | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_full_purchase_flow_under_budget_chromium\20260503_092329\screenshots\05_add_to_cart_4.png
+09:23:54.073 | INFO     | src.flows.cart_flow:add_items_to_cart:58 -   + added: https://www.automationexercise.com/product_details/30
+09:23:54.907 | INFO     | src.pages.base_page:open:63 - Navigating to https://www.automationexercise.com/product_details/31
+09:23:56.551 | INFO     | src.pages.product_page:add_to_cart:74 - Clicked Add-to-cart
+09:23:57.482 | INFO     | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_full_purchase_flow_under_budget_chromium\20260503_092329\screenshots\06_add_to_cart_5.png
+09:23:57.509 | INFO     | src.flows.cart_flow:add_items_to_cart:58 -   + added: https://www.automationexercise.com/product_details/31
+09:23:58.354 | INFO     | src.flows.cart_flow:add_items_to_cart:63 - add_items_to_cart: 5/5 succeeded
+09:23:58.354 | INFO     | src.pages.base_page:open:63 - Navigating to https://www.automationexercise.com/view_cart
+09:23:59.837 | INFO     | src.pages.cart_page:get_subtotal:83 - Cart subtotal computed from 5 line(s): 1629
+  line 1: 'Rs. 400' -> 400
+  line 2: 'Rs. 1299' -> 129
+  line 3: 'Rs. 1000' -> 100
+  line 4: 'Rs. 1500' -> 150
+  line 5: 'Rs. 850' -> 850
+09:24:00.403 | INFO     | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_full_purchase_flow_under_budget_chromium\20260503_092329\screenshots\07_cart_total_assertion.png
+09:24:00.429 | INFO     | src.flows.cart_flow:assert_cart_total_not_exceeds:108 - Cart subtotal = 1629, threshold = 7500.0
+09:24:00.430 | INFO     | src.pages.cart_page:proceed_to_checkout:135 - Clicking 'Proceed To Checkout'
+09:24:02.230 | INFO     | src.pages.checkout_page:get_total:141 - Checkout total computed from 5 line(s): 1629
+  line 1: 'Rs. 400' -> 400
+  line 2: 'Rs. 1299' -> 129
+  line 3: 'Rs. 1000' -> 100
+  line 4: 'Rs. 1500' -> 150
+  line 5: 'Rs. 850' -> 850
+09:24:02.695 | INFO     | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_full_purchase_flow_under_budget_chromium\20260503_092329\screenshots\08_checkout_review_your_order.png
+09:24:02.957 | INFO     | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_full_purchase_flow_under_budget_chromium\20260503_092329\screenshots\09_99_final_state_test_full_purchase_flow_under_budget_chromium_.png

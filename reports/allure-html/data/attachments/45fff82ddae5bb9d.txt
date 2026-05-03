@@ -1,0 +1,12 @@
+09:24:08.185 | INFO     | SearchResultsPage | src.pages.base_page:open:63 - Navigating to https://www.automationexercise.com/products
+09:24:11.462 | INFO     | SearchResultsPage | src.pages.search_results_page:apply_max_price:94 - automationexercise.com has no UI price filter; applying max_price=600.0 client-side via ProductCard.
+09:24:11.532 | INFO     | SearchResultsPage | src.pages.search_results_page:collect_cards:111 - Discovered 9 candidate product elements
+09:24:13.095 | INFO     | SearchResultsPage | src.pages.search_results_page:collect_cards:143 - Parsed 9 unique product cards
+09:24:13.096 | INFO     | search_flow | src.flows.search_flow:search_items_by_name_under_price:65 -   + Sleeveless Dress @ 100 -> https://www.automationexercise.com/product_details/3
+09:24:13.097 | INFO     | search_flow | src.flows.search_flow:search_items_by_name_under_price:65 -   + Stylish Dress @ 150 -> https://www.automationexercise.com/product_details/4
+09:24:13.097 | INFO     | search_flow | src.flows.search_flow:search_items_by_name_under_price:65 -   + Sleeves Top and Short - Blue & Pink @ 478 -> https://www.automationexercise.com/product_details/16
+09:24:13.097 | INFO     | search_flow | src.flows.search_flow:search_items_by_name_under_price:65 -   + Sleeveless Unicorn Patch Gown - Pink @ 105 -> https://www.automationexercise.com/product_details/19
+09:24:13.097 | INFO     | search_flow | src.flows.search_flow:search_items_by_name_under_price:65 -   + Cotton Mull Embroidered Dress @ 119 -> https://www.automationexercise.com/product_details/20
+09:24:13.097 | INFO     | search_flow | src.flows.search_flow:search_items_by_name_under_price:84 - Returning 5 URLs (limit=5, pages=1)
+09:24:13.702 | INFO     | screenshot | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_search_returns_urls_within_budget_chromium-tight_budget_dress\20260503_092408\screenshots\01_search_dress_under_600.png
+09:24:14.250 | INFO     | screenshot | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_search_returns_urls_within_budget_chromium-tight_budget_dress\20260503_092408\screenshots\02_99_final_state_test_search_returns_urls_within_budget_chromium-tight_budget_dress_.png

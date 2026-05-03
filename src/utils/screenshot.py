@@ -70,16 +70,43 @@ def _screenshots_dir() -> Path:
     return target
 
 
+def _wait_for_page_ready(page: "Page") -> None:
+    """Block until the page is in a stable, fully-rendered state.
+
+    Three sequential checks, each with a short timeout so we don't stall
+    for minutes on chatty analytics scripts:
+
+    1. ``domcontentloaded`` — the HTML is parsed and deferred scripts have run.
+    2. ``load`` — all sub-resources (images, stylesheets, iframes) are done.
+    3. ``networkidle`` — no more than 0 network connections for 500 ms.
+       This one is best-effort: ad networks / analytics on
+       automationexercise.com keep the network busy, so we cap the wait
+       at 3 s and move on.
+    """
+    for state, ms in (("domcontentloaded", 5_000), ("load", 8_000)):
+        try:
+            page.wait_for_load_state(state, timeout=ms)
+        except Exception:  # noqa: BLE001
+            _log.debug(f"wait_for_load_state('{state}') timed out — continuing")
+    try:
+        page.wait_for_load_state("networkidle", timeout=3_000)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def take_screenshot(page: "Page", name: str) -> Path:
     """Save a full-page screenshot under the per-test folder and return the path.
 
-    Uses a generous 30-second timeout and falls back to a viewport-only
-    capture if full-page times out (heavy sites sometimes stall on font
-    rendering when ``full_page=True``).
+    Waits for the page to be fully loaded and stable before capturing, then
+    uses a generous 30-second timeout and falls back to a viewport-only
+    capture if full-page times out.
     """
     safe_name = "".join(c if c.isalnum() or c in "._-" else "_" for c in name)
     seq = f"{_next_seq():02d}"
     target = _screenshots_dir() / f"{seq}_{safe_name}.png"
+
+    _wait_for_page_ready(page)
+
     try:
         page.screenshot(path=str(target), full_page=True, timeout=30_000)
     except Exception:  # noqa: BLE001

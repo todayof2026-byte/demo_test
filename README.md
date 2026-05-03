@@ -12,15 +12,15 @@ inputs, and Allure reporting.
 > (sections 4.1–4.3) is covered including the checkout page.
 
 > The full exercise brief in English is available as a one-page dashboard:
-> [`exercise-brief.html`](exercise-brief.html).
+> [`exercise-brief.html`](docs/exercise-brief.html).
 
 > The AI bug-hunting exercise (section 5) is documented in
-> [`ReadMeAIBugs.md`](ReadMeAIBugs.md) /
-> [`ReadMeAIBugs.html`](ReadMeAIBugs.html).
+> [`ReadMeAIBugs.md`](ReadMeAIBugs/ReadMeAIBugs.md) /
+> [`ReadMeAIBugs.html`](ReadMeAIBugs/ReadMeAIBugs.html).
 
 > A per-test assertion reference is available in
-> [`test-assertions.md`](test-assertions.md) /
-> [`test-assertions.html`](test-assertions.html) — **32 assertions**
+> [`test-assertions.md`](docs/test-assertions.md) /
+> [`test-assertions.html`](docs/test-assertions.html) — **35 assertions**
 > across all tests.
 
 ## Table of contents
@@ -118,12 +118,12 @@ pre-commit run --all-files
 
 | File | Brief section | Assertions | What it covers |
 | --- | --- | --- | --- |
-| `tests/test_login.py` | 4 (Auth) | 6 | Negative-then-positive login recovery in one browser window |
+| `tests/test_login.py` | 4 (Auth) | 9 | Negative login → positive login → logout, all in one browser window |
 | `tests/test_e2e_purchase_flow.py` | 4.1 + 4.2 + 4.3 | 14 | Clear cart → search → add items → assert cart total → checkout summary (8 checkout assertions) |
 | `tests/test_search_data_driven.py` | 4.1 (×3 scenarios) | 4 per scenario | Data-driven search: happy path / tight budget / empty result |
 
-**Total: 32 assertions** across 5 test cases (3 data-driven scenarios count as 3 tests).
-See [`test-assertions.md`](test-assertions.md) for the full per-assertion breakdown.
+**Total: 35 assertions** across 5 test cases (3 data-driven scenarios count as 3 tests).
+See [`test-assertions.md`](docs/test-assertions.md) for the full per-assertion breakdown.
 
 ### Recommended entry points (PowerShell)
 
@@ -138,7 +138,7 @@ See [`test-assertions.md`](test-assertions.md) for the full per-assertion breakd
 .\scripts\run-with-login.ps1 -Target tests/test_e2e_purchase_flow.py
 
 # Clear all reports (for a clean single-run deliverable):
-.\clear-reports.ps1
+.\scripts\clear-reports.ps1
 
 # Build / view the HTML report after a run:
 .\scripts\build-report.ps1     # generate reports/allure-html/
@@ -237,9 +237,9 @@ Everything in `reports/` is gitignored.
 ### Cleaning reports
 
 ```powershell
-.\clear-reports.ps1                # wipe everything (171 MB+ after a full run)
-.\clear-reports.ps1 -DryRun       # show what would go without deleting
-.\clear-reports.ps1 -KeepStorageState  # keep cached login session
+.\scripts\clear-reports.ps1                # wipe everything (171 MB+ after a full run)
+.\scripts\clear-reports.ps1 -DryRun       # show what would go without deleting
+.\scripts\clear-reports.ps1 -KeepStorageState  # keep cached login session
 ```
 
 The script also kills stale browser/pytest processes that may be holding
@@ -272,7 +272,7 @@ Hard-line rules:
 
 | Page | URL | Purpose |
 | --- | --- | --- |
-| `LoginPage` | `/login` | Fill credentials, submit, read error/success |
+| `LoginPage` | `/login` | Fill credentials, submit, read error/success, logout |
 | `SearchResultsPage` | `/products` | Submit search, collect cards via XPath, client-side price filter |
 | `ProductPage` | `/product_details/<id>` | Add to cart, dismiss confirmation modal |
 | `CartPage` | `/view_cart` | Sum per-line totals, delete items, proceed to checkout |
@@ -302,15 +302,16 @@ A project-scoped AI tooling layer is committed to the repo:
 | [`.cursor/commands/`](.cursor/commands/) | Slash commands `/add-page-object`, `/add-test-case`, `/debug-failing-locator`. |
 | [`.cursor/mcp.json`](.cursor/mcp.json) | Project-scoped Playwright MCP (live browser) + Filesystem MCP. |
 | [`docs/personas/`](docs/personas/) | Three role personas: QA Architect, Test Engineer, Code Reviewer. |
-| [`AGENTS.md`](AGENTS.md) | Universal AI playbook. |
+| [`AGENTS.md`](docs/AGENTS.md) | Universal AI playbook. |
 
 Nothing here is required for the tests to run — they're augmentations.
 
 ## Assumptions and limitations
 
-- **Login**: live credentials per `.env`. Each test gets a **fresh browser
-  context** with a real UI login — no cached `storage_state.json` reuse —
-  so every Allure report opens with a visible login step.
+- **Login**: live credentials per `.env`. The login test has its own browser
+  (negative → positive → logout). All other tests share a **single
+  session-scoped browser** that logs in once and stays open — no browser
+  close/reopen between tests.
 - **Video**: recorded for **every test** (pass or fail) at 1280×720. This
   adds ~5–15 MB per test but guarantees the reviewer can watch the full
   user journey.
@@ -340,7 +341,7 @@ Nothing here is required for the tests to run — they're augmentations.
 │   └── utils/                        price_parser, screenshot, logger, variant_picker
 ├── tests/
 │   ├── conftest.py                   Fixtures, evidence wiring, watchdog, ad-popup handler
-│   ├── test_login.py                 Login flow (negative → positive, 6 assertions)
+│   ├── test_login.py                 Login flow (negative → positive → logout, 9 assertions)
 │   ├── test_e2e_purchase_flow.py     Full purchase flow + checkout (14 assertions)
 │   └── test_search_data_driven.py    Data-driven search (3 scenarios × 4 assertions)
 ├── data/queries.yaml                 Data-driven search scenarios
@@ -353,14 +354,18 @@ Nothing here is required for the tests to run — they're augmentations.
 │   ├── setup-secrets.ps1             Install sops+age, generate keypair
 │   ├── encrypt-env.ps1               .env → SOPS encrypted
 │   ├── decrypt-env.ps1               SOPS → .env
+│   ├── clear-reports.ps1             Wipe all reports + stale processes
 │   └── make_login_evidence.py        Sanitised login evidence bundle
-├── clear-reports.ps1                 Wipe all reports + stale processes
-├── test-assertions.md                Per-test assertion reference (32 total)
-├── test-assertions.html              Same, styled HTML dashboard
-├── exercise-brief.html               Full English brief
-├── ReadMeAIBugs.md                   AI bug-hunting exercise (section 5)
-├── ReadMeAIBugs.html                 Same, styled HTML
-├── AGENTS.md                         Universal AI playbook
+├── docs/
+│   ├── AGENTS.md                     Universal AI playbook
+│   ├── exercise-brief.html           Full English brief
+│   ├── test-assertions.md            Per-test assertion reference (35 total)
+│   ├── test-assertions.html          Same, styled HTML dashboard
+│   ├── ai-workflow.md                AI-assisted workflow guide
+│   └── personas/                     Role-based AI personas
+├── ReadMeAIBugs/
+│   ├── ReadMeAIBugs.md               AI bug-hunting exercise (section 5)
+│   └── ReadMeAIBugs.html             Same, styled HTML
 ├── pyproject.toml
 ├── pytest.ini
 ├── .env.example

@@ -34,15 +34,15 @@ _BOGUS_PASSWORD = "this-is-definitely-not-the-password"
 @allure.epic("automationexercise.com E2E")
 @allure.feature("Authentication")
 @allure.story(
-    "Recovery flow: type wrong creds, see error, retry with correct creds, "
-    "no browser close in between"
+    "Full auth lifecycle: wrong creds rejected, correct creds accepted, "
+    "logout ends session — all in one browser window"
 )
 @allure.title(
-    "Login: wrong password is rejected, then correct password authenticates "
-    "in the same browser window"
+    "Login: wrong password rejected -> correct password authenticates -> "
+    "logout returns to login page"
 )
 @allure.severity(allure.severity_level.BLOCKER)
-@allure.tag("smoke", "auth", "login", "brief-section-4")
+@allure.tag("smoke", "auth", "login", "logout", "brief-section-4")
 @pytest.mark.smoke
 def test_login_negative_then_positive(guest_page) -> None:  # noqa: ANN001
     """Drive both negative and positive paths in one browser window.
@@ -129,3 +129,22 @@ def test_login_negative_then_positive(guest_page) -> None:  # noqa: ANN001
             attachment_type=allure.attachment_type.TEXT,
         )
         login_page.screenshot("login_success_authenticated")
+
+    # --- Logout: verify the session can be cleanly ended --------------------
+    with allure.step("Click Logout"):
+        login_page.logout()
+        login_page.screenshot("after_logout")
+
+    with allure.step("Assert logged out: back on /login, not authenticated"):
+        assert login_page.is_on_login_page(), (
+            "After logout the login form should be visible again, "
+            "but it is not — the site may not have redirected to /login."
+        )
+        assert not login_page.is_authenticated(), (
+            "After logout the 'Logged in as ...' marker should be gone, "
+            "but it is still visible — the session was not invalidated."
+        )
+        assert "/login" in login_page.page.url, (
+            f"Expected URL to contain '/login' after logout, got: "
+            f"{login_page.page.url}"
+        )

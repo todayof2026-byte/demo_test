@@ -1,0 +1,7 @@
+{
+  "test_id": "tests/test_search_data_driven.py::test_search_returns_urls_within_budget[chromium-empty_ok_nonsense]",
+  "outcome": "passed",
+  "duration_seconds": 5.427,
+  "started_at_utc": "2026-05-03T06:24:14+00:00",
+  "longrepr": null
+}

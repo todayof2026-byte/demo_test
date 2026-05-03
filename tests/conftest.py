@@ -218,6 +218,73 @@ def session_login(playwright: Playwright, browser: Browser, settings, storage_st
     return storage_state_path
 
 
+# -------------------------------------------------- shared browser page (session-scoped)
+# One browser window for ALL ``logged_in_page`` tests. The browser opens once,
+# logs in once (positive, visible), and stays open until the very last test
+# finishes. This gives a continuous video recording and avoids the visual
+# "browser-close-reopen" churn between tests.
+@pytest.fixture(scope="session")
+def _session_evidence_dir(settings) -> Path:  # noqa: ANN001
+    """Session-level evidence folder for the shared browser's trace & video."""
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    target = settings.reports_dir / "evidence" / "_session_shared" / ts
+    target.mkdir(parents=True, exist_ok=True)
+    (target / "screenshots").mkdir(exist_ok=True)
+    return target
+
+
+@pytest.fixture(scope="session")
+def _shared_browser_page(
+    browser: Browser,
+    browser_context_args,  # noqa: ANN001
+    settings,  # noqa: ANN001
+    _session_evidence_dir: Path,
+) -> Generator[Page, None, None]:
+    """Session-scoped page: one browser window for the entire suite.
+
+    Opens a browser, performs a single visible positive login, then yields
+    the same page to every test that requests ``logged_in_page``. The browser
+    is only closed at session end — no context creation/destruction between
+    tests, so there is zero visual "flicker".
+
+    Trace and video are saved once at session teardown.
+    """
+    if not settings.has_credentials():
+        pytest.skip("SITE_EMAIL / SITE_PASSWORD required for shared browser page")
+
+    args = dict(browser_context_args)
+    args["record_video_dir"] = str(_session_evidence_dir / "_videos_raw")
+    args["record_video_size"] = _VIDEO_SIZE
+
+    ctx = browser.new_context(**args)
+    _block_ad_networks(ctx)
+    ctx.set_default_timeout(settings.action_timeout_ms)
+    ctx.set_default_navigation_timeout(settings.navigation_timeout_ms)
+    ctx.tracing.start(screenshots=True, snapshots=True, sources=True)
+
+    p = ctx.new_page()
+    _install_ad_popup_handler(p)
+
+    _log.info("Shared browser: performing one-time visible positive login")
+    login_flow(p)
+
+    try:
+        yield p
+    finally:
+        trace_path = _session_evidence_dir / "trace.zip"
+        try:
+            ctx.tracing.stop(path=str(trace_path))
+        except Exception as exc:  # noqa: BLE001
+            _log.warning(f"Failed to stop session trace: {exc}")
+        _safe_close(lambda: p.close(run_before_unload=False), label="shared_page")
+        _safe_close(ctx.close, label="shared_ctx")
+        _finalise_video(_session_evidence_dir)
+        _attach_artefact(trace_path, "trace.zip", "application/zip")
+        _attach_artefact(
+            _session_evidence_dir / "video.webm", "video.webm", "video/webm"
+        )
+
+
 # ------------------------------------------------------ context / page / guest_page
 def _build_context_args(
     settings,  # noqa: ANN001
@@ -413,61 +480,26 @@ def page(context: BrowserContext) -> Generator[Page, None, None]:  # noqa: F811
 
 @pytest.fixture()
 def logged_in_page(
-    browser: Browser,
-    browser_context_args,  # noqa: ANN001
+    _shared_browser_page: Page,
     settings,  # noqa: ANN001
-    session_login: Path,
-    test_evidence_dir: Path,
-) -> Generator[Page, None, None]:
-    """Per-test context, pre-authenticated via the session-scoped storage state.
+) -> Page:
+    """Return the session-scoped shared page — the browser never closes between tests.
 
-    Login happens **once per session** in the ``session_login`` fixture (real
-    UI login that saves ``storage_state.json``). Each test then creates a
-    fresh context that loads that saved state — so every test starts already
-    authenticated with no extra login round-trip.
+    The ``_shared_browser_page`` fixture opens the browser once, performs a
+    single visible positive login, and stays open until the last test finishes.
+    This fixture simply passes that page through so each test gets the same
+    browser window.
 
-    Each test still gets its own video, trace, screenshots, and log file
-    because the context + page are function-scoped.
-
-    Skips if credentials are absent.
+    Per-test screenshots and logs still work (driven by the function-scoped
+    ``test_evidence_dir`` and its autouse dependants). Trace and video are
+    captured once at session level.
     """
     if not settings.has_credentials():
         pytest.skip(
             "Test requires SITE_EMAIL / SITE_PASSWORD in .env (positive-login "
             "precondition). Add credentials and re-run."
         )
-
-    if not session_login.exists():
-        pytest.fail(
-            "session_login fixture did not produce storage_state.json. "
-            "Check that SITE_EMAIL/SITE_PASSWORD are correct."
-        )
-
-    args = _build_context_args(settings, browser_context_args, test_evidence_dir)
-    args["storage_state"] = str(session_login)
-    ctx = browser.new_context(**args)
-    _block_ad_networks(ctx)
-    ctx.set_default_timeout(settings.action_timeout_ms)
-    ctx.set_default_navigation_timeout(settings.navigation_timeout_ms)
-    ctx.tracing.start(screenshots=True, snapshots=True, sources=True)
-
-    p = ctx.new_page()
-    _install_ad_popup_handler(p)
-    try:
-        with allure.step("Precondition: authenticated via session storage state"):
-            p.goto(settings.base_url, wait_until="domcontentloaded")
-        yield p
-    finally:
-        trace_path = test_evidence_dir / "trace.zip"
-        try:
-            ctx.tracing.stop(path=str(trace_path))
-        except Exception as exc:  # noqa: BLE001
-            _log.warning(f"Failed to stop trace: {exc}")
-        _safe_close(lambda: p.close(run_before_unload=False), label="logged_in_page")
-        _safe_close(ctx.close, label="logged_in_ctx")
-        _finalise_video(test_evidence_dir)
-        _attach_artefact(trace_path, "trace.zip", "application/zip")
-        _attach_artefact(test_evidence_dir / "video.webm", "video.webm", "video/webm")
+    return _shared_browser_page
 
 
 @pytest.fixture()
@@ -525,7 +557,11 @@ def pytest_runtest_makereport(item, call):  # noqa: ANN001
         return
 
     # Final-state screenshot if a Playwright page is in scope.
-    page_obj = item.funcargs.get("page") or item.funcargs.get("guest_page")
+    page_obj = (
+        item.funcargs.get("page")
+        or item.funcargs.get("guest_page")
+        or item.funcargs.get("logged_in_page")
+    )
     if page_obj is not None:
         try:
             attach_screenshot(page_obj, f"99_final_state_{item.name}")

@@ -1,0 +1,7 @@
+{
+  "test_id": "tests/test_search_data_driven.py::test_search_returns_urls_within_budget[chromium-full_results_tshirt]",
+  "outcome": "passed",
+  "duration_seconds": 4.549,
+  "started_at_utc": "2026-05-03T06:24:03+00:00",
+  "longrepr": null
+}

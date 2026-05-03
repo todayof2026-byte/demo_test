@@ -1,0 +1,10 @@
+09:23:06.812 | INFO     | src.pages.base_page:open:63 - Navigating to https://www.automationexercise.com/login
+09:23:10.376 | INFO     | src.pages.login_page:fill_credentials:45 - Filling login form for 'never_existed_98765@example.com'
+09:23:12.612 | INFO     | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_login_negative_then_positive_chromium\20260503_092300\screenshots\01_login_rejected_with_error.png
+09:23:12.643 | INFO     | src.pages.login_page:clear_credentials:57 - Clearing login form fields
+09:23:12.768 | INFO     | src.pages.login_page:fill_credentials:45 - Filling login form for 'today_test@gmail.com'
+09:23:19.399 | INFO     | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_login_negative_then_positive_chromium\20260503_092300\screenshots\02_login_success_authenticated.png
+09:23:19.428 | INFO     | src.pages.login_page:logout:164 - Clicking Logout
+09:23:21.155 | INFO     | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_login_negative_then_positive_chromium\20260503_092300\screenshots\03_after_logout.png
+09:23:21.390 | INFO     | src.utils.screenshot:take_screenshot:119 - Saved screenshot: C:\demo_test\reports\evidence\test_login_negative_then_positive_chromium\20260503_092300\screenshots\04_99_final_state_test_login_negative_then_positive_chromium_.png
+09:23:22.685 | INFO     | conftest:_finalise_video:318 - Saved video: C:\demo_test\reports\evidence\test_login_negative_then_positive_chromium\20260503_092300\video.webm

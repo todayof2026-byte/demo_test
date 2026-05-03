@@ -1,0 +1,7 @@
+{
+  "test_id": "tests/test_search_data_driven.py::test_search_returns_urls_within_budget[chromium-tight_budget_dress]",
+  "outcome": "passed",
+  "duration_seconds": 5.551,
+  "started_at_utc": "2026-05-03T06:24:08+00:00",
+  "longrepr": null
+}

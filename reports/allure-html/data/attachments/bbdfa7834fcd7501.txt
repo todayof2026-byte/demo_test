@@ -1,0 +1,5 @@
+subtotal      = 1629
+budget/item   = 1500.0
+items_count   = 5
+threshold     = 7500.0
+line_items    = 5

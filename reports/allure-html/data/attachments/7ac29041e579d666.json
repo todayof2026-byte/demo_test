@@ -1,0 +1,7 @@
+{
+  "test_id": "tests/test_e2e_purchase_flow.py::test_full_purchase_flow_under_budget[chromium]",
+  "outcome": "passed",
+  "duration_seconds": 32.992,
+  "started_at_utc": "2026-05-03T06:23:22+00:00",
+  "longrepr": null
+}
