@@ -10,6 +10,7 @@ inputs, and Allure reporting.
 
 > **Status:** all five tests pass on `main`. The full brief
 > (sections 4.1–4.3) is covered including the checkout page.
+> CI runs automatically on every push via GitHub Actions.
 
 > The full exercise brief in English is available as a one-page dashboard:
 > [`exercise-brief.html`](docs/exercise-brief.html).
@@ -34,6 +35,7 @@ inputs, and Allure reporting.
 - [Architecture](#architecture)
 - [Data-driven scenarios](#data-driven-scenarios)
 - [AI-assisted workflow](#ai-assisted-workflow)
+- [CI / GitHub Actions](#ci--github-actions)
 - [Assumptions and limitations](#assumptions-and-limitations)
 - [Project layout](#project-layout)
 
@@ -308,6 +310,25 @@ A project-scoped AI tooling layer is committed to the repo:
 
 Nothing here is required for the tests to run — they're augmentations.
 
+## CI / GitHub Actions
+
+A GitHub Actions workflow runs the full 5-test suite automatically on every
+push to `main` (and on pull requests). The workflow lives in
+[`.github/workflows/e2e-tests.yml`](.github/workflows/e2e-tests.yml).
+
+| Step | What it does |
+| --- | --- |
+| **Login test** | Runs `test_login.py` (negative → positive → logout) |
+| **E2E + data-driven** | Runs `test_e2e_purchase_flow.py` + `test_search_data_driven.py` (shared browser) |
+| **Allure report** | Builds the HTML report and uploads it as a downloadable artifact |
+
+Credentials are stored as **GitHub Secrets** (`SITE_EMAIL`, `SITE_PASSWORD`)
+and injected as environment variables at runtime — they never appear in logs
+or workflow files.
+
+To view the CI results: go to the **Actions** tab on GitHub → click the
+latest run → download the `test-reports` artifact.
+
 ## Assumptions and limitations
 
 - **Login**: live credentials per `.env`. The login test has its own browser
@@ -333,6 +354,7 @@ Nothing here is required for the tests to run — they're augmentations.
 
 ```
 .
+├── .github/workflows/e2e-tests.yml   CI: runs all 5 tests on push to main
 ├── .cursor/                          Cursor project rules, commands, MCP
 ├── docs/personas/                    QA Architect / Test Engineer / Code Reviewer
 ├── src/
