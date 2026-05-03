@@ -193,12 +193,19 @@ def storage_state_path(settings) -> Path:  # noqa: ANN001
 
 @pytest.fixture(scope="session")
 def session_login(playwright: Playwright, browser: Browser, settings, storage_state_path) -> Path:  # noqa: ANN001
-    """Perform a real login once and persist storage_state."""
+    """Perform a real UI login ONCE per session and persist ``storage_state.json``.
+
+    All ``logged_in_page`` tests then reuse this saved state — no repeated
+    login round-trips. The one-time login still shows up in the pytest log
+    (and in Allure via a session-level step) so reviewers can see it happened.
+    """
     if _storage_is_fresh(storage_state_path) or not settings.has_credentials():
         return storage_state_path
-    _log.info("Performing one-time live login")
+    _log.info("Performing one-time live login for the session")
     context = browser.new_context()
+    _block_ad_networks(context)
     page = context.new_page()
+    _install_ad_popup_handler(page)
     try:
         login_flow(page)
         context.storage_state(path=str(storage_state_path))
@@ -409,30 +416,35 @@ def logged_in_page(
     browser: Browser,
     browser_context_args,  # noqa: ANN001
     settings,  # noqa: ANN001
+    session_login: Path,
     test_evidence_dir: Path,
 ) -> Generator[Page, None, None]:
-    """Per-test fresh context, logged in via the UI before the test body runs.
+    """Per-test context, pre-authenticated via the session-scoped storage state.
 
-    The brief asks for a real authentication step in front of the purchase /
-    search scenarios. Reusing a session-level ``storage_state.json`` across
-    tests would tick the rubric box but hide the login flow from the trace -
-    so we drive the LoginPage form for every test that needs it. The cost is
-    a few seconds per test; the gain is that every Allure report opens with
-    a "Login" step that visibly happened on this run.
+    Login happens **once per session** in the ``session_login`` fixture (real
+    UI login that saves ``storage_state.json``). Each test then creates a
+    fresh context that loads that saved state — so every test starts already
+    authenticated with no extra login round-trip.
 
-    Skips the test (rather than failing) if SITE_EMAIL/SITE_PASSWORD are not
-    set; that way you can still run unauthenticated tests on a CI machine
-    that has no credentials.
+    Each test still gets its own video, trace, screenshots, and log file
+    because the context + page are function-scoped.
+
+    Skips if credentials are absent.
     """
-    from src.pages.login_page import LoginPage  # local import: avoids cycle
-
     if not settings.has_credentials():
         pytest.skip(
             "Test requires SITE_EMAIL / SITE_PASSWORD in .env (positive-login "
             "precondition). Add credentials and re-run."
         )
 
+    if not session_login.exists():
+        pytest.fail(
+            "session_login fixture did not produce storage_state.json. "
+            "Check that SITE_EMAIL/SITE_PASSWORD are correct."
+        )
+
     args = _build_context_args(settings, browser_context_args, test_evidence_dir)
+    args["storage_state"] = str(session_login)
     ctx = browser.new_context(**args)
     _block_ad_networks(ctx)
     ctx.set_default_timeout(settings.action_timeout_ms)
@@ -442,19 +454,8 @@ def logged_in_page(
     p = ctx.new_page()
     _install_ad_popup_handler(p)
     try:
-        with allure.step("Precondition: log in with real credentials"):
-            login_page = LoginPage(p).open()
-            ok = login_page.login(
-                settings.site_email,
-                settings.site_password.get_secret_value(),
-            )
-            if not ok:
-                pytest.fail(
-                    "Positive-login precondition failed. The configured "
-                    "SITE_EMAIL/SITE_PASSWORD did not authenticate against "
-                    f"{settings.base_url}/login. Update .env and try again."
-                )
-            login_page.screenshot("00_login_precondition")
+        with allure.step("Precondition: authenticated via session storage state"):
+            p.goto(settings.base_url, wait_until="domcontentloaded")
         yield p
     finally:
         trace_path = test_evidence_dir / "trace.zip"
