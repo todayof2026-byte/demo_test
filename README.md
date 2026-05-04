@@ -142,8 +142,11 @@ See [`test-assertions.md`](docs/test-assertions.md) for the full per-assertion b
 # Run a single test with login prepended automatically:
 .\scripts\run-with-login.ps1 -Target tests/test_e2e_purchase_flow.py
 
-# Clear all reports (for a clean single-run deliverable):
-.\scripts\clear-reports.ps1
+# One-click demo: clean → run 5 tests (headed) → build report → open it:
+.\flow_control\run-e2e.ps1
+
+# Clear all reports only:
+.\flow_control\clear-reports.ps1
 
 # Build / view the HTML report after a run:
 .\scripts\build-report.ps1     # generate reports/allure-html/
@@ -242,9 +245,9 @@ Everything in `reports/` is gitignored.
 ### Cleaning reports
 
 ```powershell
-.\scripts\clear-reports.ps1                # wipe everything (171 MB+ after a full run)
-.\scripts\clear-reports.ps1 -DryRun       # show what would go without deleting
-.\scripts\clear-reports.ps1 -KeepStorageState  # keep cached login session
+.\flow_control\clear-reports.ps1                # wipe everything (171 MB+ after a full run)
+.\flow_control\clear-reports.ps1 -DryRun       # show what would go without deleting
+.\flow_control\clear-reports.ps1 -KeepStorageState  # keep cached login session
 ```
 
 The script also kills stale browser/pytest processes that may be holding
@@ -379,8 +382,10 @@ latest run → download the `test-reports` artifact.
 │   ├── setup-secrets.ps1             Install sops+age, generate keypair
 │   ├── encrypt-env.ps1               .env → SOPS encrypted
 │   ├── decrypt-env.ps1               SOPS → .env
-│   ├── clear-reports.ps1             Wipe all reports + stale processes
 │   └── make_login_evidence.py        Sanitised login evidence bundle
+├── flow_control/
+│   ├── run-e2e.ps1                   One-click demo: clean → run → report → open
+│   └── clear-reports.ps1             Wipe all reports + stale processes
 ├── docs/
 │   ├── AGENTS.md                     Universal AI playbook
 │   ├── exercise-brief.html           Full English brief
