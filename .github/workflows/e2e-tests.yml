@@ -72,15 +72,48 @@ jobs:
         if: always()
         run: allure generate reports/allure-results -o reports/allure-html --clean
 
-      - name: Upload test reports
+      - name: Upload Allure HTML Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
+          name: allure-report
+          path: reports/allure-html/
+          retention-days: 30
+
+      - name: Upload Screenshots & Evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-evidence
+          path: reports/evidence/
+          retention-days: 30
+
+      - name: Upload Raw Results (JUnit, logs, Allure JSON)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-results
           path: |
-            reports/allure-html/
             reports/allure-results/
-            reports/evidence/
             reports/junit.xml
             reports/pytest.log
           retention-days: 30
+
+      - name: Add summary with artifact links
+        if: always()
+        run: |
+          echo "## 📊 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifact | Description |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **allure-report** | Interactive HTML report (download, extract, open index.html with \`npx serve\`) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **test-evidence** | Screenshots, videos, traces per test |" >> $GITHUB_STEP_SUMMARY
+          echo "| **raw-results** | JUnit XML, pytest logs, Allure JSON |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### How to view the Allure report locally:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "# Download and extract allure-report.zip, then:" >> $GITHUB_STEP_SUMMARY
+          echo "npx serve allure-report" >> $GITHUB_STEP_SUMMARY
+          echo "# Or if you have allure CLI:" >> $GITHUB_STEP_SUMMARY
+          echo "allure open allure-report" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
